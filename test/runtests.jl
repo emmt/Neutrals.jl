@@ -31,9 +31,9 @@ using TypeUtils
         @test repr(ONE) == "𝟙"
         @test repr(-ONE) == "-𝟙"
         if VERSION ≥ v"1.3"
-            @test ZERO === 𝟘
-            @test ONE === 𝟙
-            @test -ONE === -𝟙
+            @test ZERO === eval(Meta.parse("𝟘"))
+            @test ONE === eval(Meta.parse("𝟙"))
+            @test -ONE === eval(Meta.parse("-𝟙"))
         end
         @test typemin(Neutral) === -ONE
         @test typemax(Neutral) === ONE
