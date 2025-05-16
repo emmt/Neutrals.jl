@@ -17,7 +17,7 @@ yields `-x`.
 
 ## Compatibility
 
-Before version 1.3 of Julia, `𝟘` and `𝟙` cannot be used as constant names, the aliases
+Before version 1.3 of Julia, `𝟘` and `𝟙` cannot be used as names of constants, the aliases
 `ZERO` and `ONE` can be used instead.
 
 
@@ -69,23 +69,22 @@ These rules provide two optimizations: bit shifting `x` by `𝟘` bits leaves `x
 while bit shifting `x` by `±𝟙` bit shifts `x` by one bit in the correct direction where
 `UInt(1)` is to dispatch on the type of `x` not on that of the number of bits. This
 closely reflects the behavior implemented in `base/int.jl` except that bit-shifting by `𝟘`
-always yields the left argument unchanged even though it is a Boolean.
+always yields the left operand  unchanged even though it is a Boolean.
 
 ## Rules for comparison
 
 When comparing values with `==`, `<`, `<=`, `isequal`, `isless`, and `cmp`, the rule of
 thumb is that the behavior shall reflect the expression. This poses no problem for `𝟘` and
-`𝟙` which both are representable by any numeric type. This is not the case of `-𝟙` which
+`𝟙` which are representable by any numeric type. This is not the case of `-𝟙` which
 cannot be simply converted to a Boolean, an unsigned number (integer, rational, or
 complex).
 
-If `u` an unsigned number the following identities hold:
+If `u` is an unsigned number, the following identities hold:
 
 ``` julia
 u == -𝟙 -> false
 u != -𝟙 -> true
 isequal(u, -𝟙) -> false
-isequal(-𝟙, u) -> false
 ```
 
 Of course, these binary operators being symmetric, their result does not depend on the
@@ -107,7 +106,7 @@ cmp(-𝟙, u) -> -1
 ## Rules for conversion
 
 As for other numbers, a neutral number `n` (`𝟘`, `𝟙`, or `-𝟙`) can be converted into a
-numeric type `T` by `T(n)` or equivalently by `convert(T, n)` with both yield the same
+numeric type `T` by `T(n)` or equivalently by `convert(T, n)` which both yield the same
 result of type `T`. This operation is always successful for `𝟘` and `𝟙` which are
 representable by any numeric type. For `-𝟙`, an `InexactError` exception is thrown if `T`
 is not a signed type this includes Booleans, unsigned integers, but also rationals and
@@ -118,6 +117,6 @@ complexes with Boolean or unsigned parts.
 - [`Zeros`](https://github.com/perrutquist/Zeros.jl) provides `Zero()` and `One()` which
   are also strong neutral elements for addition and multiplication with numbers. `Zero()`
   and `One()` are similar to `𝟘` or `ZERO`, and `𝟙` or `ONE`. However `-One()` yields `-1`
-  which not a singleton. Division by `One()` converts the other operand to floating-point.
+  which is not a singleton. Division by `One()` converts the other operand to floating-point.
 
 - [`StaticNumbers`](https://github.com/perrutquist/StaticNumbers.jl).
