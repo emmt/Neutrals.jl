@@ -3,20 +3,21 @@ using Test
 using TypeUtils
 
 @testset "Neutrals.jl" begin
-    maybe(::Type{Neutral}, x::Integer) =  (-1 ≤ x ≤ 1 ? Neutral(x) : x)
+    maybe(::Type{Neutral}, x::Integer) = (-1 ≤ x ≤ 1 ? Neutral(x) : x)
     types = (Integer,
              Bool,
              Int8, Int16, Int32, Int64, Int128, BigInt,
              UInt8, UInt16, UInt32, UInt64, UInt128,
              AbstractFloat,
              Float16, Float32, Float64, BigFloat,
-             Rational{Int8}, Rational{UInt8},
-             Complex{Bool}, Complex{Int16}, Complex{Float32})
+             Rational{Bool}, Rational{Int8}, Rational{UInt8},
+             Complex{Bool}, Complex{Int16}, Complex{UInt16}, Complex{Float32})
     #integers = filter(T -> T <: Integer, collect(types))
     #floats = filter(T -> T <: AbstractFloat, collect(types))
     others = (true, false,
               0x0, 0x1,
               0, 1, -1, 2,
+              0//1, 1//1, -1//2, 0x01/0x03,
               0.0f0, 1.0f0, -1.0f0, 2.0f0, Inf32, -Inf32, NaN32,
               0.0, 1.0, -1.0, 0.4, Inf, -Inf, NaN, -NaN,
               BigInt(0), BigInt(1), BigInt(-1), BigInt(3),
@@ -41,22 +42,29 @@ using TypeUtils
         @test one(Neutral) === ONE
     end
 
-    @testset "Constructors of $v" for (k, v) in (0 => ZERO, 1 => ONE, -1 => -ONE)
+    @testset "Constructors of $x" for (v, x) in (0 => ZERO, 1 => ONE, -1 => -ONE)
         # Consistency.
-        @test v ∈ instances(Neutral)
-        @test Int(v) === k
-        @test Neutrals.value(v) === k
+        @test x ∈ instances(Neutral)
+        @test Int(x) === v
+        @test Neutrals.value(x) === v
 
         # Constructors.
-        @test Neutral{k}() === v
-        @test Neutral(k) === v
-        @test Neutral(v) === v
-        @test Neutral{k}(v) === v
-        @test Neutral(Int8(k)) === v
-        @test Neutral{k}(Int8(k)) === v
-        @test Neutral(float(k)) === v
-        @test Neutral{k}(float(k)) === v
-        @test_throws Exception Neutral{Int8(k)}()
+        @test Neutral{v}() === x
+        @test Neutral(v) === x
+        @test Neutral(x) === x
+        @test Neutral{v}(x) === x
+        @test Neutral(Int8(v)) === x
+        @test Neutral{v}(Int8(v)) === x
+        @test Neutral(float(v)) === x
+        @test Neutral{v}(float(v)) === x
+        @test_throws Exception Neutral{Int8(v)}()
+
+        # Conversion.
+        @test convert(typeof(x), x) === x
+        @test convert(Neutral, x) === x
+        @test typeof(x)(x) === x
+        @test convert(Integer, x) === x
+        @test Integer(x) === x
     end
 
     @testset "Unary functions of $x" for x in instances(Neutral)
@@ -90,38 +98,23 @@ using TypeUtils
     end
 
     @testset "Conversion of $x to type $T" for T in types, x in instances(Neutral)
-        if T === Bool # to do these test once
-            @test convert(typeof(x), x) === x
-            @test convert(Neutral, x) === x
-            @test typeof(x)(x) === x
-            @test convert(Integer, x) === x
-            @test Integer(x) === x
-        end
+        # `convert(T,x)` and `T(x)` should yield the same result equal to `T(value(x))`
+        # except if `x` is `-ONE` and `T` is unsigned in which case an `InexactError`
+        # exception is thrown.
         if is_signed(T) || Int(x) ≥ 0
-            y = @inferred convert(T, x)
-            z = @inferred T(x)
+            y = @inferred T(x)
             @test y isa T
-            @test z isa T
             @test y == T(Int(x))
-            @test z == T(Int(x))
+            z = @inferred convert(T, x)
+            @test typeof(z) == typeof(y)
+            @test z == y
             if T === AbstractFloat
                 @test y isa Float64
-                @test z isa Float64
-                @test float(x) === y
-                @test float(x) === z
+                @test y === float(x)
             end
         else
-            @test_throws InexactError convert(T, x)
             @test_throws InexactError T(x)
-        end
-        if T <: Integer
-            y = @inferred rem(x, T) # x % T
-            @test y isa T
-            if isconcretetype(T)
-                @test y == (Int(x) % T)
-            else
-                @test y === x
-            end
+            @test_throws InexactError convert(T, x)
         end
     end
 
@@ -163,49 +156,78 @@ using TypeUtils
     end
 
     @testset "Binary operations with $x" for x in others
-        # ZERO as neutral element of addition.
+        # Addition and subtraction with ZERO, the neutral element for the addition of
+        # numbers.
         @test ZERO + x === x
         @test x + ZERO === x
         @test isequal(ZERO - x, -x)
         @test x - ZERO === x
 
+        # Multiplication and division by ONE, the neutral element for the multiplication
+        # of numbers.
+        @test ONE*x === x
+        @test x*ONE === x
+        @test ONE\x === x
+        @test x/ONE === x
+        @test isequal(ONE/x, inv(x))
+        @test isequal(x\ONE, inv(x))
+
+        # Multiplication and division by ZERO, a strong zero for the multiplication of
+        # numbers.
+        @test ZERO*x === ZERO
+        @test x*ZERO === ZERO
+        @test_throws DivideError x/ZERO
+        @test_throws DivideError ZERO\x
+
+        # Multiplication and division by -ONE which negates the other operand in a
+        # multiplication.
+        @test isequal((-ONE)*x, -x)
+        @test isequal(x*(-ONE), -x)
+        @test isequal((-ONE)\x, -x)
+        @test isequal(x/(-ONE), -x)
+        @test isequal((-ONE)/x, -inv(x))
+        @test isequal(x\(-ONE), -inv(x))
+
+        # Addition and subtraction with ONE and -ONE.
         u = x isa Bool ? 1 :
             x isa Union{BigInt,BigFloat} ? Clong(1) : one(x)
         @test isequal(x + ONE, x + u)
         @test isequal(ONE + x, x + u)
         @test isequal(x - ONE, x - u)
         @test isequal(ONE - x, u - x)
-        if is_signed(x) || x isa Bool
-            @test isequal(x + (-ONE), x - u)
-            @test isequal((-ONE) + x, x - u)
-            @test isequal(x - (-ONE), x + u)
-            @test isequal((-ONE) - x, -u - x)
-        else
-            @test_throws InexactError x + (-ONE)
-            @test_throws InexactError (-ONE) + x
-            @test_throws InexactError x - (-ONE)
-            @test_throws InexactError (-ONE) - x
+        @test isequal(x + (-ONE), x - u)
+        @test isequal((-ONE) + x, x - u)
+        @test isequal(x - (-ONE), x + u)
+        @test isequal((-ONE) - x, -u - x)
+
+        # Exponentiation.
+        @test isequal(x^ZERO, oneunit(x))
+        @test x^ONE === x
+        @test isequal(x^(-ONE), inv(x))
+
+        # Comparisons.
+        let z = zero(one(x)) # dimensionless zero of same type as x
+            @test (x < ZERO) == (x < z)
+            @test (x ≤ ZERO) == (x ≤ z)
+            @test (x > ZERO) == (x > z)
+            @test (x ≥ ZERO) == (x ≥ z)
+            @test cmp(x, ZERO) == cmp(x, z)
+            @test cmp(ZERO, x) == cmp(z, x)
         end
-
-        # ONE as neutral element of multiplication.
-        @test ONE*x === x
-        @test x*ONE === x
-        @test ONE\x === x
-        @test x/ONE === x
-
-        # Multiplication by ZERO yields ZERO.
-        @test ZERO*x === ZERO
-        @test x*ZERO === ZERO
-
-        # Division by ZERO.
-        @test_throws DivideError x/ZERO
-        @test_throws DivideError ZERO\x
-
-        # Multiplication and division by -ONE negate other operand.
-        @test isequal((-ONE)*x, -x)
-        @test isequal(x*(-ONE), -x)
-        @test isequal((-ONE)\x, -x)
-        @test isequal(x/(-ONE), -x)
+        #
+        @test (x < ONE) == (x < one(x))
+        @test (x ≤ ONE) == (x ≤ one(x))
+        @test (x > ONE) == (x > one(x))
+        @test (x ≥ ONE) == (x ≥ one(x))
+        @test cmp(x, ONE) == cmp(x, one(x))
+        @test cmp(ONE, x) == cmp(one(x), x)
+        #
+        @test (x < -ONE) == (is_signed(x) && x < -one(x))
+        @test (x ≤ -ONE) == (is_signed(x) && x ≤ -one(x))
+        @test (x > -ONE) == (!is_signed(x) || x > -one(x))
+        @test (x ≥ -ONE) == (!is_signed(x) || x ≥ -one(x))
+        @test cmp(x, -ONE) == (is_signed(x) ? cmp(x, -one(x)) : 1)
+        @test cmp(-ONE, x) == (is_signed(x) ? cmp(-one(x), x) : -1)
     end
 
 end
