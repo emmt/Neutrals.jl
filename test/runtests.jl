@@ -17,7 +17,8 @@ using TypeUtils
     others = (true, false,
               0x0, 0x1,
               0, 1, -1, 2,
-              0//1, 1//1, -1//2, 0x01/0x03,
+              0x00//0x01, 0x01//0x01, 0x01//0x03,
+              0//1, 1//1, -1//1, -1//2,
               0.0f0, 1.0f0, -1.0f0, 2.0f0, Inf32, -Inf32, NaN32,
               0.0, 1.0, -1.0, 0.4, Inf, -Inf, NaN, -NaN,
               BigInt(0), BigInt(1), BigInt(-1), BigInt(3),
@@ -165,8 +166,10 @@ using TypeUtils
         # numbers.
         @test ZERO + x === x
         @test x + ZERO === x
-        @test isequal(ZERO - x, -x)
         @test x - ZERO === x
+        if !(x isa Rational{<:Unsigned})
+            @test isequal(ZERO - x, -x)
+        end
 
         # Multiplication and division by ONE, the neutral element for the multiplication
         # of numbers.
@@ -186,24 +189,28 @@ using TypeUtils
 
         # Multiplication and division by -ONE which negates the other operand in a
         # multiplication.
-        @test isequal((-ONE)*x, -x)
-        @test isequal(x*(-ONE), -x)
-        @test isequal((-ONE)\x, -x)
-        @test isequal(x/(-ONE), -x)
-        @test isequal((-ONE)/x, -inv(x))
-        @test isequal(x\(-ONE), -inv(x))
+        if !(x isa Rational{<:Unsigned})
+            @test isequal((-ONE)*x, -x)
+            @test isequal(x*(-ONE), -x)
+            @test isequal((-ONE)\x, -x)
+            @test isequal(x/(-ONE), -x)
+            @test isequal((-ONE)/x, -inv(x))
+            @test isequal(x\(-ONE), -inv(x))
+        end
 
         # Addition and subtraction with ONE and -ONE.
         u = x isa Bool ? 1 :
             x isa Union{BigInt,BigFloat} ? Clong(1) : one(x)
         @test isequal(x + ONE, x + u)
         @test isequal(ONE + x, x + u)
-        @test isequal(x - ONE, x - u)
-        @test isequal(ONE - x, u - x)
-        @test isequal(x + (-ONE), x - u)
-        @test isequal((-ONE) + x, x - u)
-        @test isequal(x - (-ONE), x + u)
-        @test isequal((-ONE) - x, -u - x)
+        if !(x isa Rational{<:Unsigned})
+            @test isequal(x - ONE, x - u)
+            @test isequal(ONE - x, u - x)
+            @test isequal(x + (-ONE), x - u)
+            @test isequal((-ONE) + x, x - u)
+            @test isequal(x - (-ONE), x + u)
+            @test isequal((-ONE) - x, -u - x)
+        end
 
         # Exponentiation.
         @test isequal(x^ZERO, oneunit(x))
