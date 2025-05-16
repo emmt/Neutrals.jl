@@ -22,6 +22,10 @@ using TypeUtils: @public
 @public impl_or impl_and impl_xor
 @public is_dimensionless
 
+if !isdefined(Base, :get_extension)
+    using Requires
+end
+
 """
     Neutral{V}()
     Neutral(V)
