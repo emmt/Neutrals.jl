@@ -288,4 +288,19 @@ using TypeUtils
         @test cmp(-ONE, x) == (is_signed(x) ? cmp(-one(x), x) : -1)
     end
 
+    @testset "Bit-shifting of $x by $n" for x in filter(
+        x -> x isa Integer, collect(others)), n in instances(Neutral)
+
+        # Check value.
+        @test (x << n) == (x << Int(n))
+        @test (x >> n) == (x >> Int(n))
+        @test (x >>> n) == (x >>> Int(n))
+
+        # Check type.
+        T = (x isa Bool && !iszero(n)) ? Int : typeof(x)
+        @test typeof(x << n) === T
+        @test typeof(x >> n) === T
+        @test typeof(x >>> n) === T
+    end
+
 end

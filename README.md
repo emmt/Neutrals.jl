@@ -15,6 +15,30 @@ negate the other operand: `(-ONE)*x` always yields `-x`.
 
 Consistent rules for the subtraction and division follow from the rules for the addition and multiplication.
 
+## Bit-shift operations
+
+In Julia, bit-shifting integer `x` by `n` bits yields a result of the same type as `x`
+except for Booleans for which the result is an `Int`. With the `Neutrals` package, if `n`
+is a neutral number (`𝟘`, `𝟙`, or `-𝟙`), the following rules are implemented:
+
+``` julia
+x <<   𝟘 -> x
+x <<   𝟙 -> x << UInt(1)
+x <<  -𝟙 -> x >> UInt(1)
+x >>   𝟘 -> x
+x >>   𝟙 -> x >> UInt(1)
+x >>  -𝟙 -> x << UInt(1)
+x >>>  𝟘 -> x
+x >>>  𝟙 -> x >>> UInt(1)
+x >>> -𝟙 -> x << UInt(1)
+```
+
+These rules provide two optimizations: bit shifting `x` by `𝟘` bits leaves `x` unchanged,
+while bit shifting `x` by `±𝟙` shifts `x` by one bit in the correct direction where
+`UInt(1)` is to dispatch on the type of `x` not on that of the number of bits. This
+closely reflects the behavior implemented in `base/int.jl` except that bit-shifting by `𝟘`
+always yields the left argument unchanged even though it is a Boolean.
+
 ## Related packages
 
 - [`Zeros`](https://github.com/perrutquist/Zeros.jl) provides `Zero()` and `One()` which
