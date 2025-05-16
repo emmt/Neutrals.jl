@@ -1,19 +1,25 @@
 # Neutrals [![Build Status](https://github.com/emmt/Neutrals.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/emmt/Neutrals.jl/actions/workflows/CI.yml?query=branch%3Amain) [![Build Status](https://ci.appveyor.com/api/projects/status/github/emmt/Neutrals.jl?svg=true)](https://ci.appveyor.com/project/emmt/Neutrals-jl) [![Coverage](https://codecov.io/gh/emmt/Neutrals.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/emmt/Neutrals.jl)
 
-This package provides two singleton values, `ZERO` and `ONE`, which are *neutral elements*
-for the addition and multiplication of numbers respectively. In other words, whatever the
-type and value of the number `x`, `ZERO + x` and `ONE*x` yields `x` unchanged and without
-computations. Even though `x` is not an instance of `isbitstype`, `ZERO + x === x` and
-`ONE*x === x` hold. Besides, `ZERO` is a so-called *strong zero* which means that `ZERO*x`
-always yields `ZERO` without computations. In particular, `ZERO*Inf` and `ZERO*NaN` both
-yield `ZERO`. Since `ZERO` and `ONE` are singletons, their specific behaviors in
-arithmetic operations is inferable at compile time and can result in valuable
+This package provides two singleton values, `𝟘` and `𝟙` which are the respective *neutral
+elements* for the addition and multiplication of numbers regardless of their types. In
+other words, whatever the type and value of the number `x`, `𝟘 + x` and `𝟙*x` yields `x`
+unchanged and without computations. Hence, even though `x` is not an instance of
+`isbitstype`, `𝟘 + x === x` and `𝟙*x === x` hold. Besides, `𝟘` is a so-called *strong
+zero* which means that `𝟘*x` always yields `𝟘` without computations. In particular,
+`𝟘*Inf` and `𝟘*NaN` both yield `𝟘`. Since `𝟘` and `𝟙` are singletons, their specific
+behaviors in arithmetic operations is inferable at compile time and can result in valuable
 optimizations.
 
-`-ONE`, the opposite of `ONE`, is also a singleton whose effect in a multiplication is to
-negate the other operand: `(-ONE)*x` always yields `-x`.
+Consistent rules for the subtraction and division follow from the rules for the addition
+and multiplication with `𝟘` or `𝟙`. For example, `-𝟙`, the opposite of `𝟙`, is also a
+singleton whose effect in a multiplication is to negate the other operand: `(-𝟙)*x` always
+yields `-x`.
 
-Consistent rules for the subtraction and division follow from the rules for the addition and multiplication.
+## Compatibility
+
+Before version 1.3 of Julia, `𝟘` and `𝟙` cannot be used as constant names, the aliases
+`ZERO` and `ONE` can be used instead.
+
 
 ## Bitwise binary operations
 
@@ -32,7 +38,7 @@ i ⋄ -𝟙 -> i ⋄ (i isa Bool ? true : -one(i))
 Note that all bitwise binary operations are commutative: their result does not depend on
 the order of the operands.
 
-These rules may be optimized in the implementation. for example:
+These rules may be optimized in the implementation. For example:
 
 ``` julia
 i |  𝟘 -> i
@@ -60,10 +66,43 @@ x >>> -𝟙 -> x << UInt(1)
 ```
 
 These rules provide two optimizations: bit shifting `x` by `𝟘` bits leaves `x` unchanged,
-while bit shifting `x` by `±𝟙` shifts `x` by one bit in the correct direction where
+while bit shifting `x` by `±𝟙` bit shifts `x` by one bit in the correct direction where
 `UInt(1)` is to dispatch on the type of `x` not on that of the number of bits. This
 closely reflects the behavior implemented in `base/int.jl` except that bit-shifting by `𝟘`
 always yields the left argument unchanged even though it is a Boolean.
+
+## Rules for comparison
+
+When comparing values with `==`, `<`, `<=`, `isequal`, `isless`, and `cmp`, the rule of
+thumb is that the behavior shall reflect the expression. This poses no problem for `𝟘` and
+`𝟙` which both are representable by any numeric type. This is not the case of `-𝟙` which
+cannot be simply converted to a Boolean, an unsigned number (integer, rational, or
+complex).
+
+If `u` an unsigned number the following identities hold:
+
+``` julia
+u == -𝟙 -> false
+u != -𝟙 -> true
+isequal(u, -𝟙) -> false
+isequal(-𝟙, u) -> false
+```
+
+Of course, these binary operators being symmetric, their result does not depend on the
+order of the arguments.
+
+Furthermore, if `u` is an unsigned real (i.e., not a complex), then:
+
+``` julia
+u < -𝟙 -> false
+u ≤ -𝟙 -> false
+u > -𝟙 -> true
+u ≥ -𝟙 -> true
+isless(u, -𝟙) -> false
+isless(-𝟙, u) -> true
+cmp(u, -𝟙) -> 1
+cmp(-𝟙, u) -> -1
+```
 
 ## Rules for conversion
 
@@ -78,7 +117,7 @@ complexes with Boolean or unsigned parts.
 
 - [`Zeros`](https://github.com/perrutquist/Zeros.jl) provides `Zero()` and `One()` which
   are also strong neutral elements for addition and multiplication with numbers. `Zero()`
-  and `One()` are similar to `ZERO` and `ONE`. However `-One()` yields `-1` which not a
-  singleton. Division by `One()` converts the other operand to floating-point.
+  and `One()` are similar to `𝟘` or `ZERO`, and `𝟙` or `ONE`. However `-One()` yields `-1`
+  which not a singleton. Division by `One()` converts the other operand to floating-point.
 
 - [`StaticNumbers`](https://github.com/perrutquist/StaticNumbers.jl).
