@@ -333,7 +333,7 @@ for (f, (g, w, Ts)) in (:(+)   => (:impl_add,    3, (:Integer, :Rational, :Abstr
                         :(==)  => (:impl_eq,     3, (:Number, :Rational, :BigInt, :BigFloat)),
                         :(<)   => (:impl_lt,     3, (:Real, :Rational)),
                         :(<=)  => (:impl_le,     3, (:Real, :Rational)),
-                        :cmp   => (:impl_cmp,    3, (:Number, :BigInt, :BigFloat)),
+                        :cmp   => (:impl_cmp,    3, (:Number, :Integer, :BigInt, :BigFloat)),
                         :(|)   => (:impl_or,     3, (:Integer,)),
                         :(&)   => (:impl_and,    3, (:Integer,)),
                         :xor   => (:impl_xor,    3, (:Integer,)),
