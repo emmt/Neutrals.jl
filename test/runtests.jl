@@ -48,6 +48,7 @@ using TypeUtils
         @test x ∈ instances(Neutral)
         @test Int(x) === v
         @test Neutrals.value(x) === v
+        @test Neutrals.value(typeof(x)) === v
 
         # Constructors.
         @test Neutral{v}() === x
@@ -59,6 +60,10 @@ using TypeUtils
         @test Neutral(float(v)) === x
         @test Neutral{v}(float(v)) === x
         @test_throws Exception Neutral{Int8(v)}()
+        for o in instances(Neutral)
+            o === x && continue
+            @test_throws InexactError typeof(x)(o)
+        end
 
         # Conversion.
         @test convert(typeof(x), x) === x
@@ -78,7 +83,7 @@ using TypeUtils
         @test repr(x) isa String
         @test +x === x
         @test -x === Neutral(-Int(x))
-        @test ~x === (-1 ≤ ~Int(x) ≤ 1 ? Neutral(~Int(x)) : ~Int(x))
+        @test ~x === maybe(Neutral, ~Int(x))
         @test typemin(x) === x
         @test typemax(x) === x
         @test iszero(x) == iszero(Int(x))
@@ -94,13 +99,15 @@ using TypeUtils
         @test zero(x) === ZERO
         @test one(x) === ONE
         @test angle(x) === (Int(x) == -1 ? π : ZERO)
-        if iszero(Int(x))
+        if iszero(x)
             @test_throws DivideError inv(x)
         else
             @test inv(x) === x
         end
         @test iseven(x) === iseven(Int(x))
         @test isodd(x) === isodd(Int(x))
+        @test is_signed(x)
+        @test is_signed(typeof(x))
     end
 
     @testset "Conversion of $x to type $T" for T in types, x in instances(Neutral)
@@ -122,6 +129,31 @@ using TypeUtils
             @test_throws InexactError T(x)
             @test_throws InexactError convert(T, x)
         end
+        if T <: Integer
+            y = @inferred rem(x, T)
+            @test y isa T
+            @test y == (Int(x) % T)
+        end
+    end
+
+    @testset "Promote rules" begin
+        @test promote(true,  ZERO) === (true,  false)
+        @test promote(false, ZERO) === (false, false)
+        @test promote(true,   ONE) === (true,  true)
+        @test promote(false,  ONE) === (false, true)
+        @test promote(true,  -ONE) === (1, -1)
+        @test promote(false, -ONE) === (0, -1)
+        @test promote(ZERO, ZERO) === (ZERO, ZERO)
+        @test promote(ZERO,  ONE) === (0, 1)
+        @test promote(ZERO, -ONE) === (0, -1)
+        @test promote(ZERO, -3.0f0) === (0.0f0, -3.0f0)
+        @test promote(ZERO,  pi) === (0.0, float(pi))
+        @test promote( ONE, ZERO) === (1, 0)
+        @test promote( ONE,  ONE) === (ONE, ONE)
+        @test promote( ONE, -ONE) === (1, -1)
+        @test promote(-ONE, ZERO) === (-1, 0)
+        @test promote(-ONE,  ONE) === (-1, 1)
+        @test promote(-ONE, -ONE) === (-ONE, -ONE)
     end
 
     @testset "Binary operations between $x and $y" for x in instances(Neutral), y in instances(Neutral)
@@ -146,7 +178,7 @@ using TypeUtils
         @test (x << y) === maybe(Neutral, Int(x) << Int(y))
         @test (x >> y) === maybe(Neutral, Int(x) >> Int(y))
         @test (x >>> y) === maybe(Neutral, Int(x) >>> Int(y))
-        if Int(y) == 0
+        if iszero(y)
             @test (x ^ y) === ONE
             @test_throws DivideError x / y
             @test_throws DivideError div(x, y)
@@ -184,6 +216,8 @@ using TypeUtils
         # numbers.
         @test ZERO*x === ZERO
         @test x*ZERO === ZERO
+        @test ZERO/x === ZERO
+        @test x\ZERO === ZERO
         @test_throws DivideError x/ZERO
         @test_throws DivideError ZERO\x
 
@@ -219,6 +253,10 @@ using TypeUtils
 
         # Comparisons.
         let z = zero(one(x)) # dimensionless zero of same type as x
+            @test (x == ZERO) == (x == z)
+            @test (ZERO == x) == (z == x)
+            @test isequal(x, ZERO) == isequal(x, z)
+            @test isequal(ZERO, x) == isequal(z, x)
             @test (x < ZERO) == (x < z)
             @test (x ≤ ZERO) == (x ≤ z)
             @test (x > ZERO) == (x > z)
@@ -227,6 +265,10 @@ using TypeUtils
             @test cmp(ZERO, x) == cmp(z, x)
         end
         #
+        @test (x == ONE) == (x == one(x))
+        @test (ONE == x) == (one(x) == x)
+        @test isequal(x, ONE) == isequal(x, one(x))
+        @test isequal(ONE, x) == isequal(one(x), x)
         @test (x < ONE) == (x < one(x))
         @test (x ≤ ONE) == (x ≤ one(x))
         @test (x > ONE) == (x > one(x))
@@ -234,6 +276,10 @@ using TypeUtils
         @test cmp(x, ONE) == cmp(x, one(x))
         @test cmp(ONE, x) == cmp(one(x), x)
         #
+        @test (x == -ONE) == (is_signed(x) && x == -one(x))
+        @test (-ONE == x) == (is_signed(x) && -one(x) == x)
+        @test isequal(x, -ONE) == (is_signed(x) && isequal(x, -one(x)))
+        @test isequal(-ONE, x) == (is_signed(x) && isequal(-one(x), x))
         @test (x < -ONE) == (is_signed(x) && x < -one(x))
         @test (x ≤ -ONE) == (is_signed(x) && x ≤ -one(x))
         @test (x > -ONE) == (!is_signed(x) || x > -one(x))
