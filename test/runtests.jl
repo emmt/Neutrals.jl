@@ -1,6 +1,10 @@
+module TestingNeutrals
+
 using Neutrals
 using Test
 using TypeUtils
+
+using Base: Fix1, Fix2
 
 @testset "Neutrals.jl" begin
     maybe(::Type{Neutral}, x::Integer) = (-1 ≤ x ≤ 1 ? Neutral(x) : x)
@@ -15,8 +19,8 @@ using TypeUtils
     #integers = filter(T -> T <: Integer, collect(types))
     #floats = filter(T -> T <: AbstractFloat, collect(types))
     others = (true, false,
-              0x0, 0x1,
-              0, 1, -1, 2,
+              0x0, 0x1, 0x5,
+              0, 1, -1, 2, 7, -6,
               0x00//0x01, 0x01//0x01, 0x01//0x03,
               0//1, 1//1, -1//1, -1//2,
               0.0f0, 1.0f0, -1.0f0, 2.0f0, Inf32, -Inf32, NaN32,
@@ -288,6 +292,32 @@ using TypeUtils
         @test cmp(-ONE, x) == (is_signed(x) ? cmp(-one(x), x) : -1)
     end
 
+    @testset "Bitwise operation with values of type $T and $n" for T in (
+        Bool, Int8, UInt16, Int, BigInt), n in instances(Neutral)
+
+        # Set y to be the left operand as expected by the documented logic.
+        y = n == -1 ? (T <: Bool ? true : -one(T)) : T(n)
+
+        x1 = (T <: Union{Bool,Unsigned} ? zero(T) : T(-15))::T
+        x2 = (T <: Bool ? one(T) : T(15))::T
+        x = x1:x2
+
+        @test typeof(zero(T) | n) === T
+        @test typeof(one(T) | n) === T
+        @test map(Fix1(|,n), x) == map(Fix1(|,y), x)
+        @test map(Fix2(|,n), x) == map(Fix2(|,y), x)
+
+        @test typeof(zero(T) & n) === T
+        @test typeof(one(T) & n) === T
+        @test map(Fix1(&, n), x) == map(Fix1(&, y), x)
+        @test map(Fix2(&, n), x) == map(Fix2(&, y), x)
+
+        @test typeof(zero(T) ⊻ n) === T
+        @test typeof(one(T) ⊻ n) === T
+        @test map(Fix1(⊻, n), x) == map(Fix1(⊻, y), x)
+        @test map(Fix2(⊻, n), x) == map(Fix2(⊻, y), x)
+    end
+
     @testset "Bit-shifting of $x by $n" for x in filter(
         x -> x isa Integer, collect(others)), n in instances(Neutral)
 
@@ -304,3 +334,5 @@ using TypeUtils
     end
 
 end
+
+end # module

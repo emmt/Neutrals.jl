@@ -15,6 +15,32 @@ negate the other operand: `(-ONE)*x` always yields `-x`.
 
 Consistent rules for the subtraction and division follow from the rules for the addition and multiplication.
 
+## Bitwise binary operations
+
+In binary bitwise operations `|`, `&`, and `xor` (also denoted `⊻`) between an integer `i`
+and a neutral number `n`, the implemented rules are such that the result is as if `𝟘` and
+`𝟙` are converted to the type of `i` while `-𝟙` is assumed to represent a bit mask of the
+same type as `i` with all bits set to `1`. For a given binary bitwise operation denoted by
+`⋄`, this corresponds to the following rules:
+
+``` julia
+i ⋄  𝟘 -> i ⋄ zero(i)
+i ⋄  𝟙 -> i ⋄ one(i)
+i ⋄ -𝟙 -> i ⋄ (i isa Bool ? true : -one(i))
+```
+
+Note that all bitwise binary operations are commutative: their result does not depend on
+the order of the operands.
+
+These rules may be optimized in the implementation. for example:
+
+``` julia
+i |  𝟘 -> i
+i &  𝟘 -> zero(i)
+i & -𝟙 -> i
+i ⊻  𝟘 -> i
+```
+
 ## Bit-shift operations
 
 In Julia, bit-shifting integer `x` by `n` bits yields a result of the same type as `x`
