@@ -340,9 +340,9 @@ for (f, (g, w, Ts)) in (:(+)   => (:impl_add,    3, (:Integer, :Rational, :Abstr
                         :(|)   => (:impl_or,     3, (:Integer,)),
                         :(&)   => (:impl_and,    3, (:Integer,)),
                         :xor   => (:impl_xor,    3, (:Integer,)),
-                        :(<<)  => (:impl_lshft,  2, (:Integer,)),
-                        :(>>)  => (:impl_rshft,  2, (:Integer,)),
-                        :(>>>) => (:impl_urshft, 2, (:Integer,)),
+                        :(<<)  => (:impl_lshft,  2, (:Integer, :Bool)),
+                        :(>>)  => (:impl_rshft,  2, (:Integer, :Bool)),
+                        :(>>>) => (:impl_urshft, 2, (:Integer, :Bool)),
                         )
     @eval Base.$f(x::Neutral, y::Neutral) = $g(x, y)
     for T in Ts
