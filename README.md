@@ -65,6 +65,15 @@ while bit shifting `x` by `±𝟙` shifts `x` by one bit in the correct directio
 closely reflects the behavior implemented in `base/int.jl` except that bit-shifting by `𝟘`
 always yields the left argument unchanged even though it is a Boolean.
 
+## Rules for conversion
+
+As for other numbers, a neutral number `n` (`𝟘`, `𝟙`, or `-𝟙`) can be converted into a
+numeric type `T` by `T(n)` or equivalently by `convert(T, n)` with both yield the same
+result of type `T`. This operation is always successful for `𝟘` and `𝟙` which are
+representable by any numeric type. For `-𝟙`, an `InexactError` exception is thrown if `T`
+is not a signed type this includes Booleans, unsigned integers, but also rationals and
+complexes with Boolean or unsigned parts.
+
 ## Related packages
 
 - [`Zeros`](https://github.com/perrutquist/Zeros.jl) provides `Zero()` and `One()` which
