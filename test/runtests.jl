@@ -10,7 +10,7 @@ using TypeUtils
              UInt8, UInt16, UInt32, UInt64, UInt128,
              AbstractFloat,
              Float16, Float32, Float64, BigFloat,
-             Rational{Bool}, Rational{Int8}, Rational{UInt8},
+             Rational, Rational{Bool}, Rational{Int8}, Rational{UInt8},
              Complex{Bool}, Complex{Int16}, Complex{UInt16}, Complex{Float32})
     #integers = filter(T -> T <: Integer, collect(types))
     #floats = filter(T -> T <: AbstractFloat, collect(types))
@@ -65,6 +65,11 @@ using TypeUtils
         @test typeof(x)(x) === x
         @test convert(Integer, x) === x
         @test Integer(x) === x
+        @test Number(x) === x
+        @test Real(x) === x
+        @test AbstractFloat(x) === float(Int(x))
+        @test Rational(x) === Int(x)//1
+        @test Complex(x) === Int(x) + 0im
     end
 
     @testset "Unary functions of $x" for x in instances(Neutral)

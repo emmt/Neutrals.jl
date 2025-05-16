@@ -204,11 +204,14 @@ for T in (Bool,
     end
 end
 (::Type{Rational{T}})(x::Neutral) where {T<:Integer} = Rational(T(x))
+(::Type{Rational})(x::Neutral) = Rational(value(x), 1)
 (::Type{Complex{T}})(x::Neutral) where {T<:Real} = Complex(T(x), T(0))
+(::Type{Complex})(x::Neutral) = Complex(value(x), 0)
 (::Type{AbstractFloat})(x::Neutral) = float(value(x))
 Base.convert(::Type{Bool}, x::Neutral{ 0}) = false
 Base.convert(::Type{Bool}, x::Neutral{ 1}) = true
 Base.convert(::Type{Bool}, x::Neutral{-1}) = throw(InexactError(:convert, Bool, -ONE))
+
 
 # Conversion rules for any other numeric type `T` and assuming efficient implementations
 # of `zero(T)` and `one(T)`
