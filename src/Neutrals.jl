@@ -15,6 +15,7 @@ using TypeUtils
 using TypeUtils: @public
 
 @public value
+@public impl_conv
 @public impl_add impl_sub impl_mul impl_div impl_pow
 @public impl_eq impl_lt impl_le impl_cmp
 @public impl_trd impl_rem impl_mod
@@ -220,9 +221,9 @@ Base.convert(::Type{T}, x::Neutral) where {T<:BareNumber} = impl_conv(T, x)
 Base.convert(::Type{T}, x::Neutral) where {T<:Number} =
     is_dimensionless(T) ? impl_conv(T, x) : throw_convert_neutral_to_dimensionful_type(T, x)
 
-impl_conv(::Type{T}, x::Neutral{0}) where {T<:Number} = zero(T)
-impl_conv(::Type{T}, x::Neutral{1}) where {T<:Number} = one(T)
-impl_conv(::Type{T}, x::Neutral{-1}) where {T<:Number} = -one(T)
+impl_conv(::Type{T}, x::Neutral{0}) where {T<:BareNumber} = zero(T)
+impl_conv(::Type{T}, x::Neutral{1}) where {T<:BareNumber} = one(T)
+impl_conv(::Type{T}, x::Neutral{-1}) where {T<:BareNumber} = -one(T)
 impl_conv(::Type{T}, x::Neutral{-1}) where {T<:Union{Bool,Unsigned,Rational{<:Union{Bool,Unsigned}},Complex{<:Union{Bool,Unsigned}}}} =
     throw(InexactError(:convert, T, x))
 

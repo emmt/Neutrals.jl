@@ -15,3 +15,8 @@ Versioning](https://semver.org/spec).
 ### Added
 
 - Extend addition and subtraction with neutrals to `Number`.
+
+### Changed
+
+- Extending `Neutral.impl_conv` is easier: it is sufficient to extend this method for a
+  foreign numeric type and just `Neutral`, not for each instance of `Neutral`.
