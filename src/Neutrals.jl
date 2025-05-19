@@ -321,10 +321,12 @@ Base.promote_rule(::Type{Neutral{-1}}, ::Type{Bool}) = Int
 #     <=(x::Real, y::Real)     in `basae/promotion.jl`
 #
 # Override base methods to call corresponding implementation:
-for (f, (g, w, Ts)) in (:(+)   => (:impl_add,    3, (:Integer, :Rational, :AbstractIrrational,
-                                                     :AbstractFloat, :BigInt, :BigFloat)),
-                        :(-)   => (:impl_sub,    3, (:Integer, :Rational, :AbstractIrrational,
-                                                     :AbstractFloat, :BigInt, :BigFloat)),
+for (f, (g, w, Ts)) in (:(+)   => (:impl_add,    3, (:Number, :Integer, :Rational,
+                                                     :AbstractIrrational, :AbstractFloat,
+                                                     :BigInt, :BigFloat)),
+                        :(-)   => (:impl_sub,    3, (:Number, :Integer, :Rational,
+                                                     :AbstractIrrational, :AbstractFloat,
+                                                     :BigInt, :BigFloat)),
                         :(*)   => (:impl_mul,    3, (:Number, :Integer, :Rational)),
                         :(/)   => (:impl_div,    3, (:Number, :Integer, :Rational)),
                         :(^)   => (:impl_pow,    2, (:Number, :Rational, :BigInt,
