@@ -146,7 +146,12 @@ Base.:inv(x::DimensionlessNumber) = DimensionlessNumber(inv(x.val))
             y = @inferred T(x)
             @test y isa T
             @test y == T(Int(x))
-            z = @inferred convert(T, x)
+            if VERSION < v"1.1"
+                # For some reasons this inference is broken in tests with Julia 1.0.
+                z = convert(T, x)
+            else
+                z = @inferred convert(T, x)
+            end
             @test typeof(z) == typeof(y)
             @test z == y
             if T === AbstractFloat
