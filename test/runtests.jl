@@ -327,26 +327,26 @@ Base.:inv(x::DimensionlessNumber) = DimensionlessNumber(inv(x.val))
 
     @testset "Arithmetic with custom types" begin
         x = @inferred DimensionlessNumber(1.0)
-        @test x + 𝟘 === x
-        @test 𝟘 + x === x
-        @test x - 𝟘 === x
-        @test 𝟘 - x === -x
+        @test x + ZERO === x
+        @test ZERO + x === x
+        @test x - ZERO === x
+        @test ZERO - x === -x
         # Multiplication of a non-standard number by 𝟘 must be specifically extended.
         # multiplication by 𝟙 should work.
-        @test_throws MethodError 𝟘*x
-        @test_throws MethodError x*𝟘
-        @test 𝟙*x === x
-        @test x*𝟙 === x
-        @test x/𝟙 === x
-        @test 𝟙/x === inv(x)
-        @test -𝟙*x === -x
+        @test_throws MethodError ZERO*x
+        @test_throws MethodError x*ZERO
+        @test ONE*x === x
+        @test x*ONE === x
+        @test x/ONE === x
+        @test ONE/x === inv(x)
+        @test -ONE*x === -x
         # Operations with dimensionful number should fail here because (unlike Unitful
         # quantities) they are not specifically implemented.
         x = @inferred LengthInMeters(-2.0)
-        @test_throws ArgumentError x + 𝟘
-        @test_throws ArgumentError x - 𝟘
-        @test_throws ArgumentError x - 𝟘
-        @test_throws ArgumentError 𝟘 - x
+        @test_throws ArgumentError x + ZERO
+        @test_throws ArgumentError x - ZERO
+        @test_throws ArgumentError x - ZERO
+        @test_throws ArgumentError ZERO - x
     end
 
     @testset "Bitwise operation with values of type $T and $n" for T in (
@@ -392,29 +392,29 @@ Base.:inv(x::DimensionlessNumber) = DimensionlessNumber(inv(x.val))
 
     @testset "Operation with Unitful quantities" begin
         x = 3kg
-        @test_throws Exception x + 𝟘
-        @test_throws Exception x + 𝟙
-        @test_throws Exception x + (-𝟙)
-        @test unit(𝟘*unit(x)) === unit(x)
-        @test 𝟘*unit(x) == zero(x)
-        @test 𝟘*unit(x) !== zero(x)
-        @test unit(𝟙*unit(x)) === unit(x)
-        @test 𝟙*unit(x) == oneunit(x)
-        @test 𝟙*unit(x) !== oneunit(x)
-        @test unit(-𝟙*unit(x)) === unit(x)
-        @test -𝟙*unit(x) == -oneunit(x)
-        @test x + 𝟘*unit(x) === x
-        @test 𝟘*unit(x) + x === x
-        @test x + 𝟙*unit(x) === x + oneunit(x)
-        @test 𝟙*unit(x) + x === x + oneunit(x)
-        @test x - 𝟙*unit(x) === x - oneunit(x)
-        @test 𝟙*unit(x) - x === oneunit(x) - x
-        @test 𝟘/x == zero(inv(x))
-        @test 𝟙/x == inv(x)
-        @test -𝟙/x == -inv(x)
-        @test_throws DivideError x/𝟘
-        @test x/𝟙 == x
-        @test x/-𝟙 == -x
+        @test_throws Exception x + ZERO
+        @test_throws Exception x + ONE
+        @test_throws Exception x + (-ONE)
+        @test unit(ZERO*unit(x)) === unit(x)
+        @test ZERO*unit(x) == zero(x)
+        @test ZERO*unit(x) !== zero(x)
+        @test unit(ONE*unit(x)) === unit(x)
+        @test ONE*unit(x) == oneunit(x)
+        @test ONE*unit(x) !== oneunit(x)
+        @test unit(-ONE*unit(x)) === unit(x)
+        @test -ONE*unit(x) == -oneunit(x)
+        @test x + ZERO*unit(x) === x
+        @test ZERO*unit(x) + x === x
+        @test x + ONE*unit(x) === x + oneunit(x)
+        @test ONE*unit(x) + x === x + oneunit(x)
+        @test x - ONE*unit(x) === x - oneunit(x)
+        @test ONE*unit(x) - x === oneunit(x) - x
+        @test ZERO/x == zero(inv(x))
+        @test ONE/x == inv(x)
+        @test -ONE/x == -inv(x)
+        @test_throws DivideError x/ZERO
+        @test x/ONE == x
+        @test x/-ONE == -x
     end
 end
 
