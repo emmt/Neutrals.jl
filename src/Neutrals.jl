@@ -1,10 +1,10 @@
 """
 
-Package `Neutrals` provides two constants `ZERO` and `ONE` which are neutral elements for
-respectively the addition and the multiplication of numbers. In other words, whatever the
-type and the value of the number `x`, `x + ZERO` and `ONE*x` yield `x` unchanged. In
-addition, `ZERO` is a *strong zero* in the sense that `ZERO*x` yields `ZERO` even though
-`x` may be `±Inf` or `±NaN`.
+Package `Neutrals` provides two constants, `𝟘` and `𝟙` (with aliases `ZERO` and `ONE`),
+which are neutral elements for respectively the addition and the multiplication of
+numbers. In other words, whatever the type and the value of the number `x`, `x + 𝟘` and
+`𝟙*x` yield `x` unchanged. In addition, `𝟘` is a *strong zero* in the sense that `𝟘*x`
+yields `𝟘` even though `x` may be `±Inf` or `±NaN`.
 
 """
 module Neutrals
@@ -85,21 +85,23 @@ Neutral{V}() where {V} = throw(ArgumentError(
     ZERO
     𝟘    # for Julia ≤ 1.3
 
-is a singleton representing a strong neutral element for the addition of numbers whose
-effect is to leave the other operand unchanged in an addition. More specifically, whatever
-the type of the number `x`, the following rules are implemented:
+is a singleton representing a strong neutral element for the addition of dimensionless
+numbers whose effect is to leave the other operand unchanged in an addition. More
+specifically, whatever the type of the number `x`, the following rules are implemented:
 
-    x + ZERO -> x          x - ZERO -> x
-    ZERO + x -> x          ZERO - x -> -x # i.e., negate x
+    ZERO + x -> x + ZERO -> x
+    x - ZERO -> x
+    ZERO - x -> -x # i.e., negate x
 
 When the above result is `x`, it means that the very same object is returned, e.g. `ZERO +
-x === x` holds. This is important if `x` is not an instance of an `isbitstype` type like
-`BigInt` or `BigFloat`.
+x === x` holds even though `x` is not an instance of an `isbitstype` type like `BigInt` or
+`BigFloat`.
 
-For consistency, with [`ONE`](@ref) or `𝟙`, the neutral element for the multiplication,
-the following rules are implemented for the multiplication and the division:
+For consistency, with [`ONE`](@ref) or `𝟙`, the neutral element for the multiplication of
+numbers, the following rules are implemented for the multiplication and the division
+involving `ZERO`:
 
-    x*ZERO -> ZERO                ZERO*x -> ZERO
+    x*ZERO -> ZERO*x -> ZERO
     ZERO/x -> ZERO
 
 The type of `ZERO`, given by `typeof(ZERO)` or [`Neutral{0}`](@ref Neutral), is unique and
@@ -112,38 +114,32 @@ const ZERO = Neutral(0)
     ONE
     𝟙    # for Julia ≤ 1.3
 
-yield a singleton representing the neutral element for the multiplication of numbers of
-any type. In other words and whatever the type of the number `x`, the expression `𝟙*x`
-yields `x` unchanged.
-
+yield a singleton representing the neutral element for the multiplication of numbers whose
 effect is to leave the other operand unchanged in a multiplication. More specifically,
 whatever the type of the number `x`, the following rules are implemented:
 
-    ONE*x -> x            x/ONE -> x           ONE/x -> inv(x)
-    x*ONE -> x            ONE\\x -> x           x\\ONE -> inv(x)
+    x*ONE -> ONE*x -> x
+    ONE\\x -> x/ONE -> x
+    x\\ONE -> ONE/x -> inv(x)
 
 When the above result is `x`, it means that the very same object is returned, e.g. `ONE*x
-=== x` holds. This is important if `x` is not an instance of an `isbitstype` type like
-`BigInt` or `BigFloat`.
-
-`ONE` can be used in comparisons:
-
-    x == ONE -> isone(x)          isequal(x, ONE) -> isone(x)
-    ONE == x -> isone(x)          isequal(ONE, x) -> isone(x)
+=== x` holds even though `x` is not an instance of an `isbitstype` type like `BigInt` or
+`BigFloat`.
 
 `-ONE`, the opposite of `ONE`, is also a singleton which may be used to represent a value
 whose inferable effect is to negate the other operand. Multiplications and divisions with
 `-ONE` follow the rules:
 
-    (-ONE)*x -> -x        x/(-ONE) -> -x        (-ONE)/x -> -inv(x)
-    x*(-ONE) -> -x        (-ONE)\\x -> -x        x\\(-ONE) -> -inv(x)
+    x*(-ONE) -> (-ONE)*x -> -x
+    (-ONE)\\x -> x/(-ONE) -> -x
+    x\\(-ONE) -> (-ONE)/x -> -inv(x)
 
 Compared to numerical values equal to `±1`, `ONE` and `-ONE` are singletons whose types
 are unique and whose effects are known at compile time which opens possibilities to
 optimize the code.
 
-For consistency, with [`ZERO`](@ref) or `𝟘`, the neutral element for the addition of numbers, the
-following rules are implemented for the addition and subtraction:
+For consistency, with [`ZERO`](@ref) or `𝟘`, the neutral element for the addition of
+dimensionless numbers, the following rules apply for the addition and subtraction:
 
     ONE - ONE -> ZERO
     ONE + (-ONE) -> ZERO
