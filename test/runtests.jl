@@ -3,8 +3,32 @@ module TestingNeutrals
 using Neutrals
 using Test
 using TypeUtils
+using Unitful, Unitful.DefaultSymbols
 
 using Base: Fix1, Fix2
+
+struct LengthInMeters{T<:Real} <: Number
+    len::T
+end
+
+Neutrals.is_dimensionless(::Type{<:LengthInMeters}) = false
+Base.zero(::Type{LengthInMeters{T}}) where {T} = LengthInMeters(zero(T))
+Base.one(::Type{LengthInMeters{T}}) where {T} = one(T)
+Base.oneunit(::Type{LengthInMeters{T}}) where {T} = LengthInMeters(oneunit(T))
+Base.:-(x::LengthInMeters) = DimensionlessNumber(-x.val)
+
+struct DimensionlessNumber{T<:Real} <: Number
+    val::T
+end
+
+Neutrals.is_dimensionless(::Type{<:DimensionlessNumber}) = true
+Neutrals.impl_conv(::Type{DimensionlessNumber{T}}, x::Neutral) where {T} =
+    DimensionlessNumber{T}(x)
+Base.zero(::Type{DimensionlessNumber{T}}) where {T} = DimensionlessNumber(zero(T))
+Base.one(::Type{DimensionlessNumber{T}}) where {T} = DimensionlessNumber(one(T))
+Base.oneunit(::Type{DimensionlessNumber{T}}) where {T} = DimensionlessNumber(oneunit(T))
+Base.:-(x::DimensionlessNumber) = DimensionlessNumber(-x.val)
+Base.:inv(x::DimensionlessNumber) = DimensionlessNumber(inv(x.val))
 
 @testset "Neutrals.jl" begin
     maybe(::Type{Neutral}, x::Integer) = (-1 ≤ x ≤ 1 ? Neutral(x) : x)
@@ -138,6 +162,10 @@ using Base: Fix1, Fix2
             @test y isa T
             @test y == (Int(x) % T)
         end
+        @test_throws ArgumentError convert(LengthInMeters{Float32}, x)
+        y = @inferred convert(DimensionlessNumber{Float32}, x)
+        @test y isa DimensionlessNumber{Float32}
+        @test y.val === Float32(x)
     end
 
     @testset "Promote rules" begin
@@ -292,6 +320,30 @@ using Base: Fix1, Fix2
         @test cmp(-ONE, x) == (is_signed(x) ? cmp(-one(x), x) : -1)
     end
 
+    @testset "Arithmetic with custom types" begin
+        x = @inferred DimensionlessNumber(1.0)
+        @test x + 𝟘 === x
+        @test 𝟘 + x === x
+        @test x - 𝟘 === x
+        @test 𝟘 - x === -x
+        # Multiplication of a non-standard number by 𝟘 must be specifically extended.
+        # multiplication by 𝟙 should work.
+        @test_throws MethodError 𝟘*x
+        @test_throws MethodError x*𝟘
+        @test 𝟙*x === x
+        @test x*𝟙 === x
+        @test x/𝟙 === x
+        @test 𝟙/x === inv(x)
+        @test -𝟙*x === -x
+        # Operations with dimensionful number should fail here because (unlike Unitful
+        # quantities) they are not specifically implemented.
+        x = @inferred LengthInMeters(-2.0)
+        @test_throws ArgumentError x + 𝟘
+        @test_throws ArgumentError x - 𝟘
+        @test_throws ArgumentError x - 𝟘
+        @test_throws ArgumentError 𝟘 - x
+    end
+
     @testset "Bitwise operation with values of type $T and $n" for T in (
         Bool, Int8, UInt16, Int, BigInt), n in instances(Neutral)
 
@@ -333,6 +385,32 @@ using Base: Fix1, Fix2
         @test typeof(x >>> n) === T
     end
 
+    @testset "Operation with Unitful quantities" begin
+        x = 3kg
+        @test_throws Exception x + 𝟘
+        @test_throws Exception x + 𝟙
+        @test_throws Exception x + (-𝟙)
+        @test unit(𝟘*unit(x)) === unit(x)
+        @test 𝟘*unit(x) == zero(x)
+        @test 𝟘*unit(x) !== zero(x)
+        @test unit(𝟙*unit(x)) === unit(x)
+        @test 𝟙*unit(x) == oneunit(x)
+        @test 𝟙*unit(x) !== oneunit(x)
+        @test unit(-𝟙*unit(x)) === unit(x)
+        @test -𝟙*unit(x) == -oneunit(x)
+        @test x + 𝟘*unit(x) === x
+        @test 𝟘*unit(x) + x === x
+        @test x + 𝟙*unit(x) === x + oneunit(x)
+        @test 𝟙*unit(x) + x === x + oneunit(x)
+        @test x - 𝟙*unit(x) === x - oneunit(x)
+        @test 𝟙*unit(x) - x === oneunit(x) - x
+        @test 𝟘/x == zero(inv(x))
+        @test 𝟙/x == inv(x)
+        @test -𝟙/x == -inv(x)
+        @test_throws DivideError x/𝟘
+        @test x/𝟙 == x
+        @test x/-𝟙 == -x
+    end
 end
 
 end # module

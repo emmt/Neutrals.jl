@@ -216,6 +216,37 @@ for i in eachindex(x); x[i] = zero(eltype(x)); end
 provided `eltype(x)` is dimensionless.
 
 
+## Working with dimensionful quantities
+
+Neutral numbers can work with dimensionful numbers provided the `Neutrals` package be
+properly extended for such numbers and provided the operation makes sense (e.g., adding
+`𝟘` to a length in meters does not make sense because `𝟘` is dimensionless).
+
+This is the case of the [`Unitful`](https://github.com/PainterQubits/Unitful.jl)
+quantities. For example:
+
+``` julia
+using Unitful, Unitful.DefaultSymbols
+x = 3kg
+𝟘*x === 𝟘*unit(x)         # true
+𝟙*x === x                 # true
+-𝟙*x == -x                # true
+x + 𝟘                     # error, 𝟘 is dimensionless
+x + 𝟘*unit(x) == x        # true
+x - 𝟘                     # error, 𝟘 is dimensionless
+x - 𝟘*unit(x) == x        # true
+𝟘*unit(x) == zero(x)      # true
+𝟘*unit(x) !== zero(x)     # true
+𝟙*unit(x) == oneunit(x)   # true
+𝟙*unit(x) !== oneunit(x)  # true
+-𝟙*unit(x) == -oneunit(x) # true
+𝟙 == one(x)               # true
+𝟙 !== one(x)              # true
+```
+
+Note that `𝟘*unit(x)` is equal but not identical to `zero(x)` because it is `𝟘` with the
+unit of `x`.
+
 ## Related packages
 
 - In base Julia, `false` behaves as a strong zero when multiplied by a float. Moreover it
