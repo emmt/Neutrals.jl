@@ -87,7 +87,8 @@ Neutral{V}() where {V} = throw(ArgumentError(
 
 is a singleton representing a strong neutral element for the addition of dimensionless
 numbers whose effect is to leave the other operand unchanged in an addition. More
-specifically, whatever the type of the number `x`, the following rules are implemented:
+specifically, whatever the type of the dimensionless number `x`, the following rules are
+implemented:
 
     ZERO + x -> x + ZERO -> x
     x - ZERO -> x
@@ -98,8 +99,8 @@ x === x` holds even though `x` is not an instance of an `isbitstype` type like `
 `BigFloat`.
 
 For consistency, with [`ONE`](@ref) or `𝟙`, the neutral element for the multiplication of
-numbers, the following rules are implemented for the multiplication and the division
-involving `ZERO`:
+numbers, the following rules apply for the multiplication and the division involving
+`ZERO`:
 
     x*ZERO -> ZERO*x -> ZERO
     ZERO/x -> ZERO
@@ -153,7 +154,10 @@ sub-types of `Integer`.
 const ONE = Neutral(1)
 
 # Using `𝟘` and `𝟙` as names of constants is only supported for Julia ≥ 1.3.
-VERSION ≥ v"1.3" && eval(Meta.parse("export 𝟘, 𝟙; const 𝟘 = ZERO; @doc (@doc ZERO) 𝟘; const 𝟙 = ONE; #=@doc ONE 𝟙;=#"))
+if VERSION ≥ v"1.3"
+    eval(Meta.parse("export 𝟘; const 𝟘 = ZERO; @doc (@doc ZERO) 𝟘;"))
+    eval(Meta.parse("export 𝟙; const 𝟙 = ONE; @doc (@doc ONE) 𝟙;"))
+end
 
 @eval Base.instances(::Type{Neutral}) = $(map(Neutral, (0, 1, -1)))
 
@@ -731,7 +735,11 @@ impl_urshft(x::Integer, ::Neutral{-1}) = x << UInt(1)
     Neutrals.is_dimensionless(x)
     Neutrals.is_dimensionless(typeof(x))
 
-yields whether number `x` is dimensionless.
+yields whether number `x` is dimensionless. This is a trait which only depends on the type
+of `x`.
+
+By default, only sub-types of `Real` and `Complex` are considered as being dimensionless.
+This method must be extended for other numbers.
 
 """
 is_dimensionless(x::Number) = is_dimensionless(typeof(x))

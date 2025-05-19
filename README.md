@@ -3,12 +3,12 @@
 This package provides two singleton values, `𝟘` and `𝟙` which are the respective *neutral
 elements* for the addition and multiplication of numbers regardless of their types. In
 other words, whatever the type and value of the number `x`, `𝟘 + x` and `𝟙*x` yields `x`
-unchanged and without computations. Hence, even though `x` is not an instance of
-`isbitstype`, `𝟘 + x === x` and `𝟙*x === x` hold. Besides, `𝟘` is a so-called *strong
-zero* which means that `𝟘*x` always yields `𝟘` without computations. In particular,
-`𝟘*Inf` and `𝟘*NaN` both yield `𝟘`. Since `𝟘` and `𝟙` are singletons, their specific
-behaviors in arithmetic operations is inferable at compile time and can result in valuable
-optimizations.
+unchanged and without computations. Hence, `𝟘 + x === x` and `𝟙*x === x` hold even though
+`x` is not an instance of `isbitstype` like `BigInt` or `BigFloat`. Besides, `𝟘` is a
+so-called *strong zero* which means that `𝟘*x` always yields `𝟘` without computations. In
+particular, `𝟘*Inf` and `𝟘*NaN` both yield `𝟘`. Since `𝟘` and `𝟙` are singletons, their
+specific behaviors in arithmetic operations is inferable at compile time and can result in
+valuable optimizations.
 
 Consistent rules for the subtraction and division follow from the rules for the addition
 and multiplication with `𝟘` or `𝟙`. For example, `-𝟙`, the opposite of `𝟙`, is also a
@@ -20,6 +20,80 @@ yields `-x`.
 Before version 1.3 of Julia, `𝟘` and `𝟙` cannot be used as names of constants, the aliases
 `ZERO` and `ONE` can be used instead.
 
+## Arithmetic operations
+
+### Addition
+
+The following rules apply for the addition involving a neutral number and any
+dimensionless number `x`:
+
+``` julia
+x + 𝟘 -> x
+x + 𝟙 -> x + one(x)
+x + (-𝟙) -> x - one(x)
+```
+
+The addition being symmetric, these rules do not depend on the order of the operands. The
+result of an addition with a neutral number has the same type as `x`, except if `x` is a
+Boolean and the neutral number is `±𝟙` which yield an `Int` (as does the addition of
+Booleans in Julia).
+
+### Subtraction
+
+The rules for the subtraction involving a neutral number and any dimensionless number `x`
+follow from those of the addition:
+
+``` julia
+x - 𝟘 -> x
+𝟘 - x -> -x
+x - 𝟙 -> x - one(x)
+𝟙 - x -> one(x) - x
+x - (-𝟙) -> x + one(x)
+(-𝟙) - x -> -one(x) - x
+```
+
+### Multiplication
+
+The following rules apply for the multiplication of a neutral number and a number `x`:
+
+``` julia
+𝟘*x -> 𝟘         # if `x` is dimensionless
+𝟘*x -> 𝟘*unit(x) # if `x` is dimensionful
+𝟙*x -> x
+-𝟙*x -> -x
+```
+
+The multiplication being symmetric, these rules do not depend on the order of the
+operands. If `x` is dimensionful, the result has the same dimensions as `x`. For example:
+
+``` julia
+julia> using Neutrals, Unitful.DefaultSymbols
+
+julia> 𝟘*3
+𝟘
+
+julia> 𝟘*(3kg)
+𝟘 kg
+
+```
+
+### Division
+
+The rules for the division involving a neutral number and any dimensionless number `x`
+follow from those of the multiplication:
+
+``` julia
+𝟘/x -> 𝟘         # if `x` is dimensionless
+𝟘/x -> 𝟘/unit(x) # if `x` is dimensionful
+𝟙/x -> inv(x)
+-𝟙*x -> -inv(x)
+x/𝟘 -> DivideError
+x/𝟙 -> x
+x/-𝟙 -> -x
+```
+
+Similar rules are implemented for the quotient and remainder of the Euclidean division
+(`div` or `÷` and `rem` or `%`) and for the modulo (`mod`).
 
 ## Bitwise binary operations
 
@@ -106,17 +180,53 @@ cmp(-𝟙, u) -> -1
 ## Rules for conversion
 
 As for other numbers, a neutral number `n` (`𝟘`, `𝟙`, or `-𝟙`) can be converted into a
-numeric type `T` by `T(n)` or equivalently by `convert(T, n)` which both yield the same
-result of type `T`. This operation is always successful for `𝟘` and `𝟙` which are
-representable by any numeric type. For `-𝟙`, an `InexactError` exception is thrown if `T`
-is not a signed type this includes Booleans, unsigned integers, but also rationals and
-complexes with Boolean or unsigned parts.
+numeric type `T` by `T(n)` which yields a value of type `T`. This operation is always
+successful for `𝟘` and `𝟙` which are representable by any numeric type. For `-𝟙`, an
+`InexactError` exception is thrown if `T` is not a signed type this includes Booleans,
+unsigned integers, but also rationals and complexes with Boolean or unsigned parts. As for
+any non-big integer, `AbstractFloat(n)` and `float(n)` both yield `n` converted to
+`Float64`.
+
+The expression `n % T` can also be used to *convert* a neutral number `n` to an integer
+type `T` modulo the number of integers representable in `T`. In this case, `-𝟙 % T` works
+even though `T` is unsigned. For example:
+
+``` julia
+julia> -𝟙 % UInt16
+0xffff
+
+```
+
+The method `convert(T, n)` with `T` a numeric type and `n` a neutral number amounts to
+calling `T(n)`. As a result, a neutral number `n` is automatically converted to a value of
+type `T` when stored in an array whose elements are of type `T` or when assigned to a
+field of type `T` in a mutable structure. For example, assuming `x` is an array of
+numbers, then:
+
+``` julia
+for i in eachindex(x); x[i] = 𝟘; end
+```
+
+is the same as:
+
+``` julia
+for i in eachindex(x); x[i] = zero(eltype(x)); end
+```
+
+provided `eltype(x)` is dimensionless.
+
 
 ## Related packages
 
+- In base Julia, `false` behaves as a strong zero when multiplied by a float. Moreover it
+  preserves the sign of the other operand, e.g. `false*(-NaN)` yields `-0.0`. The sign is
+  not preserved in the multiplication by `𝟘` which yields `𝟘`.
+
 - [`Zeros`](https://github.com/perrutquist/Zeros.jl) provides `Zero()` and `One()` which
   are also strong neutral elements for addition and multiplication with numbers. `Zero()`
-  and `One()` are similar to `𝟘` or `ZERO`, and `𝟙` or `ONE`. However `-One()` yields `-1`
-  which is not a singleton. Division by `One()` converts the other operand to floating-point.
+  and `One()` are similar to `𝟘` or `ZERO`, and `𝟙` or `ONE`. However, `-One()` yields `-1`
+  which is not a singleton, division by `One()` converts the other operand to floating-point,
+  multiplication of a dimensionful number and `Zero()` is not supported, etc..
 
-- [`StaticNumbers`](https://github.com/perrutquist/StaticNumbers.jl).
+- [`StaticNumbers`](https://github.com/perrutquist/StaticNumbers.jl) is a generalization
+  of `Zeros` to other any numeric values, not just `0` and `1`.
