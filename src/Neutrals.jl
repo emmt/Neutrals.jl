@@ -15,9 +15,9 @@ using TypeUtils
 using TypeUtils: @public
 
 @public value
-@public impl_conv
-@public impl_add impl_sub impl_mul impl_div impl_pow
-@public impl_eq impl_lt impl_le impl_cmp
+@public impl_conv impl_zero impl_one impl_oneunit
+@public impl_add impl_sub impl_mul impl_div impl_pow impl_inv
+@public impl_eq impl_lt impl_le impl_cmp impl_isless
 @public impl_trd impl_rem impl_mod
 @public impl_lshft impl_rshft impl_urshft
 @public impl_or impl_and impl_xor
@@ -209,6 +209,7 @@ end
 (::Type{Complex{T}})(x::Neutral) where {T<:Real} = Complex(T(x), T(0))
 (::Type{Complex})(x::Neutral) = Complex(value(x), 0)
 (::Type{AbstractFloat})(x::Neutral) = float(value(x))
+(::Type{AbstractIrrational})(x::Neutral) = impl_conv(AbstractIrrational, x)
 Base.convert(::Type{Bool}, x::Neutral{ 0}) = false
 Base.convert(::Type{Bool}, x::Neutral{ 1}) = true
 Base.convert(::Type{Bool}, x::Neutral{-1}) = throw(InexactError(:convert, Bool, -ONE))
@@ -221,14 +222,21 @@ Base.convert(::Type{T}, x::Neutral) where {T<:BareNumber} = impl_conv(T, x)
 Base.convert(::Type{T}, x::Neutral) where {T<:Number} =
     is_dimensionless(T) ? impl_conv(T, x) : throw_convert_neutral_to_dimensionful_type(T, x)
 
-impl_conv(::Type{T}, x::Neutral{0}) where {T<:BareNumber} = zero(T)
-impl_conv(::Type{T}, x::Neutral{1}) where {T<:BareNumber} = one(T)
-impl_conv(::Type{T}, x::Neutral{-1}) where {T<:BareNumber} = -one(T)
-impl_conv(::Type{T}, x::Neutral{-1}) where {T<:Union{Bool,Unsigned,Rational{<:Union{Bool,Unsigned}},Complex{<:Union{Bool,Unsigned}}}} =
-    throw(InexactError(:convert, T, x))
-
 @noinline throw_convert_neutral_to_dimensionful_type(::Type{T}, x::Neutral) where {T} =
     throw(ArgumentError("cannot convert $x to dimensionful type $T"))
+
+"""
+    Neutrals.impl_conv(T, x)
+
+implements `convert(T, x)` for type `T` and neutral number `x`. Type `T` must be
+dimensionless.
+
+"""
+impl_conv(::Type{T}, x::Neutral{0}) where {T<:BareNumber} = impl_zero(T)
+impl_conv(::Type{T}, x::Neutral{1}) where {T<:BareNumber} = impl_one(T)
+impl_conv(::Type{T}, x::Neutral{-1}) where {T<:BareNumber} = -impl_one(T)
+impl_conv(::Type{T}, x::Neutral{-1}) where {T<:Union{Bool,Unsigned,Rational{<:Union{Bool,Unsigned}},Complex{<:Union{Bool,Unsigned}}}} =
+    throw(InexactError(:convert, T, x))
 
 # Extend unary `-` for neutral numbers. Unary `+`, `*`, `&`, `|`, and `xor` do not need to
 # be extended for numbers (see base/operators.jl).
@@ -336,7 +344,8 @@ for (f, (g, w, Ts)) in (:(+)   => (:impl_add,    3, (:Number, :Integer, :Rationa
                         :div   => (:impl_trd,    3, (:Integer,)),
                         :rem   => (:impl_rem,    3, (:Integer,)),
                         :mod   => (:impl_mod,    3, (:Integer,)),
-                        :(==)  => (:impl_eq,     3, (:Number, :Rational, :BigInt, :BigFloat)),
+                        :(==)  => (:impl_eq,     3, (:Number, :Rational, :AbstractIrrational,
+                                                     :BigInt, :BigFloat)),
                         :(<)   => (:impl_lt,     3, (:Real, :Rational)),
                         :(<=)  => (:impl_le,     3, (:Real, :Rational)),
                         :cmp   => (:impl_cmp,    3, (:Number, :Integer, :BigInt, :BigFloat)),
@@ -409,6 +418,61 @@ for x in instances(Neutral), y in instances(Neutral)
 end
 
 """
+    Neutrals.impl_inv(x) -> 𝟙/x
+
+implements multiplicative inverse of number `x`. Default to `inv(x)`.
+
+"""
+impl_inv(x::Number) = inv(x)
+if VERSION < v"1.2.0-rc2"
+    # `inv(x)` was not implemented for irrational numbers prior to Julia 1.2.0-rc2
+    impl_inv(x::AbstractIrrational) = 1/x
+end
+
+"""
+    Neutrals.impl_zero(x) -> zero(x)
+    Neutrals.impl_zero(typeof(x)) -> zero(x)
+
+implements dimensionful zero (additive identity) for numbers of the type of `x`. Default
+to `zero(x)`. It is sufficient to extend the method whose argument is a type.
+
+"""
+impl_zero(x::Number) = impl_zero(typeof(x))
+impl_zero(::Type{T}) where {T} = zero(T)
+
+"""
+    Neutrals.impl_one(x) -> one(x)
+    Neutrals.impl_one(typeof(x)) -> one(x)
+
+implements dimensionless one (multiplicative identity) for numbers of the type of `x`.
+Default to `one(x)`. It is sufficient to extend the method whose argument is a type.
+
+"""
+impl_one(x::Number) = impl_one(typeof(x))
+impl_one(::Type{T}) where {T} = one(T)
+
+if VERSION < v"1.5.0-rc1"
+    # `zero(x)` and `one(x)` were not implemented for irrational numbers prior to Julia
+    # 1.5.0-rc1
+    impl_zero(::Type{<:AbstractIrrational}) = false
+    impl_one(::Type{<:AbstractIrrational}) = true
+end
+
+"""
+    Neutrals.impl_oneunit(x) -> oneunit(x)
+    Neutrals.impl_oneunit(typeof(x)) -> oneunit(x)
+
+implements dimensionful one for numbers of the type of `x`. Default to `one(x)`. It is
+sufficient to extend the method whose argument is a type.
+
+"""
+impl_oneunit(x::Number) = impl_oneunit(typeof(x))
+impl_oneunit(::Type{T}) where {T} = oneunit(T)
+
+# There is no `oneunit` for irrational numbers.
+impl_oneunit(::Type{<:AbstractIrrational}) = 1.0
+
+"""
     Neutrals.impl_add(x, y) -> x + y
 
 implements addition of numbers `x` and `y` when at least one of the operands is a neutral
@@ -421,8 +485,8 @@ number.
 impl_add(x::Neutral, y::Number) = impl_add(y, x) # put neutral number second
 impl_add(x::BareNumber, ::Neutral{0}) = x
 impl_add(x::Number, ::Neutral{ 0}) = is_dimensionless(x) ? x : throw_add_dimensionful_and_zero()
-impl_add(x::Number, ::Neutral{ 1}) = x + one(x)
-impl_add(x::Number, ::Neutral{-1}) = x - one(x)
+impl_add(x::Number, ::Neutral{ 1}) = x + impl_one(x)
+impl_add(x::Number, ::Neutral{-1}) = x - impl_one(x)
 
 @noinline throw_add_dimensionful_and_zero() =
     throw(ArgumentError("𝟘 and dimensionful quantity cannot be added"))
@@ -436,13 +500,13 @@ neutral number.
 """
 impl_sub(x::BareNumber, ::Neutral{0}) = x
 impl_sub(x::Number, ::Neutral{ 0}) = is_dimensionless(x) ? x : throw_sub_dimensionful_and_zero()
-impl_sub(x::Number, ::Neutral{ 1}) = x - one(x)
-impl_sub(x::Number, ::Neutral{-1}) = x + one(x)
+impl_sub(x::Number, ::Neutral{ 1}) = x - impl_one(x)
+impl_sub(x::Number, ::Neutral{-1}) = x + impl_one(x)
 
 impl_sub(::Neutral{ 0}, x::BareNumber) = -x
 impl_sub(::Neutral{ 0}, x::Number) = is_dimensionless(x) ? -x : throw_sub_dimensionful_and_zero()
-impl_sub(::Neutral{ 1}, x::Number) = one(x) - x
-impl_sub(::Neutral{-1}, x::Number) = -one(x) - x
+impl_sub(::Neutral{ 1}, x::Number) = impl_one(x) - x
+impl_sub(::Neutral{-1}, x::Number) = -impl_one(x) - x
 
 @noinline throw_sub_dimensionful_and_zero() =
     throw(ArgumentError("𝟘 and dimensionful quantity cannot be subtracted"))
@@ -485,8 +549,8 @@ impl_div(x::Number, ::Neutral{ 1}) = x
 impl_div(x::Number, ::Neutral{-1}) = -x
 
 impl_div(::Neutral{ 0}, x::BareNumber) = ZERO
-impl_div(::Neutral{ 1}, x::Number) = inv(x)
-impl_div(::Neutral{-1}, x::Number) = -inv(x)
+impl_div(::Neutral{ 1}, x::Number) = impl_inv(x)
+impl_div(::Neutral{-1}, x::Number) = -impl_inv(x)
 
 """
     Neutrals.impl_trd(x, y) -> x ÷ y
@@ -519,8 +583,8 @@ impl_rem(x::Neutral, y::Real) = rem(oftype(y, value(x)), y)
 # Specialize implementation for integers and for `±𝟙`. For Booleans, the following rules
 # for integers amount to assuming that the result does not depend on the sign of the right
 # operand.
-impl_rem(x::Integer, y::Neutral{1}) = zero(x)
-impl_rem(x::Integer, y::Neutral{-1}) = zero(x)
+impl_rem(x::Integer, y::Neutral{1}) = impl_zero(x)
+impl_rem(x::Integer, y::Neutral{-1}) = impl_zero(x)
 
 """
     Neutrals.impl_mod(x, y) -> mod(x, y)
@@ -538,8 +602,8 @@ impl_mod(x::Neutral, y::Real) = mod(oftype(y, value(x)), y)
 # Specialize implementation for integers and for `±𝟙`. For Booleans, the following rules
 # for integers amount to assuming that the result does not depend on the sign of the right
 # operand.
-impl_mod(x::Integer, y::Neutral{1}) = zero(x)
-impl_mod(x::Integer, y::Neutral{-1}) = zero(x)
+impl_mod(x::Integer, y::Neutral{1}) = impl_zero(x)
+impl_mod(x::Integer, y::Neutral{-1}) = impl_zero(x)
 
 """
     Neutrals.impl_pow(x, y) -> x^y
@@ -547,12 +611,9 @@ impl_mod(x::Integer, y::Neutral{-1}) = zero(x)
 implements raising number `x` to the power `y` when `y` is a neutral number.
 
 """
-impl_pow(x::Number, ::Neutral{0}) = oneunit(x)
+impl_pow(x::Number, ::Neutral{0}) = impl_oneunit(x)
 impl_pow(x::Number, ::Neutral{1}) = x
-impl_pow(x::Number, ::Neutral{-1}) = inv(x)
-
-# There is no `oneunit` for irrational numbers.
-impl_pow(x::Irrational, ::Neutral{0}) = 1.0
+impl_pow(x::Number, ::Neutral{-1}) = impl_inv(x)
 
 """
     Neutrals.impl_eq(x, y) -> x == y
@@ -566,7 +627,7 @@ number.
 impl_eq(x::Neutral, y::Number) = impl_eq(y, x) # put neutral number second
 impl_eq(x::Number, ::Neutral{ 0}) = is_dimensionless(x) && iszero(x)
 impl_eq(x::Number, ::Neutral{ 1}) = isone(x)
-impl_eq(x::Number, ::Neutral{-1}) = x == -one(x)
+impl_eq(x::Number, ::Neutral{-1}) = x == -impl_one(x)
 
 """
     Neutrals.impl_lt(x, y) -> x < y
@@ -574,13 +635,13 @@ impl_eq(x::Number, ::Neutral{-1}) = x == -one(x)
 implements `<` for real numbers when at least one of the operands is a neutral number.
 
 """
-impl_lt(x::Real, y::Neutral{ 0}) = x < zero(x)
-impl_lt(x::Real, y::Neutral{ 1}) = x <  one(x)
-impl_lt(x::Real, y::Neutral{-1}) = x < -one(x)
+impl_lt(x::Real, y::Neutral{ 0}) = x < impl_zero(x)
+impl_lt(x::Real, y::Neutral{ 1}) = x <  impl_one(x)
+impl_lt(x::Real, y::Neutral{-1}) = x < -impl_one(x)
 
-impl_lt(x::Neutral{ 0}, y::Real) = zero(y) < y
-impl_lt(x::Neutral{ 1}, y::Real) =  one(y) < y
-impl_lt(x::Neutral{-1}, y::Real) = -one(y) < y
+impl_lt(x::Neutral{ 0}, y::Real) = impl_zero(y) < y
+impl_lt(x::Neutral{ 1}, y::Real) =  impl_one(y) < y
+impl_lt(x::Neutral{-1}, y::Real) = -impl_one(y) < y
 
 """
     Neutrals.impl_le(x, y) -> x ≤ y
@@ -588,13 +649,13 @@ impl_lt(x::Neutral{-1}, y::Real) = -one(y) < y
 implements `≤` for real numbers when at least one of the operands is a neutral number.
 
 """
-impl_le(x::Real, y::Neutral{ 0}) = x <= zero(x)
-impl_le(x::Real, y::Neutral{ 1}) = x <=  one(x)
-impl_le(x::Real, y::Neutral{-1}) = x <= -one(x)
+impl_le(x::Real, y::Neutral{ 0}) = x <= impl_zero(x)
+impl_le(x::Real, y::Neutral{ 1}) = x <=  impl_one(x)
+impl_le(x::Real, y::Neutral{-1}) = x <= -impl_one(x)
 
-impl_le(x::Neutral{ 0}, y::Real) = zero(y) <= y
-impl_le(x::Neutral{ 1}, y::Real) =  one(y) <= y
-impl_le(x::Neutral{-1}, y::Real) = -one(y) <= y
+impl_le(x::Neutral{ 0}, y::Real) = impl_zero(y) <= y
+impl_le(x::Neutral{ 1}, y::Real) =  impl_one(y) <= y
+impl_le(x::Neutral{-1}, y::Real) = -impl_one(y) <= y
 
 """
     Neutrals.impl_cmp(x, y) -> cmp(x, y)
@@ -606,7 +667,21 @@ number.
 
 """
 impl_cmp(x::Neutral, y::Real) = -impl_cmp(y, x) # put neutral number second
-impl_cmp(x::Real, y::Neutral) = cmp(x, oftype(x, value(y)))
+impl_cmp(x::Integer, y::Neutral) = ifelse(impl_isless(x, y), -1, ifelse(impl_isless(y, x), 1, 0))
+impl_cmp(x::Real, y::Neutral) = impl_isless(x, y) ? -1 : ifelse(impl_isless(y, x), 1, 0)
+
+"""
+    Neutrals.impl_isless(x, y) -> isless(x, y)
+
+implements `isless` for real numbers when at least one of the operands is a neutral number.
+
+"""
+@inline impl_isless(x::Real, y::Real) = impl_lt(x, y)
+
+# NOTE For floats in `base/float.jl`:
+#      isless(x, y) =  isnan(x) || isnan(b) ? !isnan(x) : x < y
+@inline impl_isless(x::AbstractFloat, y::Neutral) = isnan(x) ? false : x < oftype(x, value(y))
+@inline impl_isless(x::Neutral, y::AbstractFloat) = isnan(y) ? true : oftype(y, value(x)) < y
 
 # Specialize methods implementing comparisons for cases involving an unsigned real and, at
 # least, `-𝟙` which cannot be converted to an unsigned real.
@@ -659,8 +734,8 @@ a neutral number.
 """
 impl_or(x::Neutral, y::Integer) = impl_or(y, x) # put neutral neutral second
 impl_or(x::Integer, ::Neutral{0}) = x
-impl_or(x::Integer, ::Neutral{1}) = x | one(x)
-impl_or(x::Integer, ::Neutral{-1}) = -one(x)
+impl_or(x::Integer, ::Neutral{1}) = x | impl_one(x)
+impl_or(x::Integer, ::Neutral{-1}) = -impl_one(x)
 
 """
     Neutrals.impl_and(x, y)
@@ -671,8 +746,8 @@ a neutral number.
 
 """
 impl_and(x::Neutral, y::Integer) = impl_and(y, x) # operation is commutative
-impl_and(x::Integer, ::Neutral{0}) = zero(x)
-impl_and(x::Integer, ::Neutral{1}) = x & one(x)
+impl_and(x::Integer, ::Neutral{0}) = impl_zero(x)
+impl_and(x::Integer, ::Neutral{1}) = x & impl_one(x)
 impl_and(x::Integer, ::Neutral{-1}) = x
 
 """
@@ -685,8 +760,8 @@ operand is a neutral number.
 """
 impl_xor(x::Neutral, y::Integer) = impl_xor(y, x) # operation is commutative
 impl_xor(x::Integer, ::Neutral{0}) = x
-impl_xor(x::Integer, ::Neutral{1}) = xor(x, one(x))
-impl_xor(x::Integer, ::Neutral{-1}) = xor(x, -one(x))
+impl_xor(x::Integer, ::Neutral{1}) = xor(x, impl_one(x))
+impl_xor(x::Integer, ::Neutral{-1}) = xor(x, -impl_one(x))
 
 # For bitwise operations with Booleans, `±𝟙` is seen as `true`.
 impl_or(x::Bool, ::Neutral{1}) = true

@@ -30,6 +30,23 @@ Base.oneunit(::Type{DimensionlessNumber{T}}) where {T} = DimensionlessNumber(one
 Base.:-(x::DimensionlessNumber) = DimensionlessNumber(-x.val)
 Base.:inv(x::DimensionlessNumber) = DimensionlessNumber(inv(x.val))
 
+# Fix inv(x), one(x), zero(x), etc. for irrational numbers for old Julia versions.
+for f in (:inv, :zero, :one, :oneunit)
+     # Use base version by default.
+    @eval @inline $f(args...; kwds...) = Base.$f(args...; kwds...)
+end
+if VERSION < v"1.2.0-rc2"
+    inv(x::AbstractIrrational) = 1/x
+end
+if VERSION < v"1.5.0-rc1"
+    zero(::AbstractIrrational) = false
+    zero(::Type{<:AbstractIrrational}) = false
+    one(::AbstractIrrational) = true
+    one(::Type{<:AbstractIrrational}) = true
+end
+oneunit(::AbstractIrrational) = true
+oneunit(::Type{<:AbstractIrrational}) = true
+
 @testset "Neutrals.jl" begin
     maybe(::Type{Neutral}, x::Integer) = (-1 ≤ x ≤ 1 ? Neutral(x) : x)
     types = (Integer,
@@ -49,6 +66,7 @@ Base.:inv(x::DimensionlessNumber) = DimensionlessNumber(inv(x.val))
               0//1, 1//1, -1//1, -1//2,
               0.0f0, 1.0f0, -1.0f0, 2.0f0, Inf32, -Inf32, NaN32,
               0.0, 1.0, -1.0, 0.4, Inf, -Inf, NaN, -NaN,
+              π,
               BigInt(0), BigInt(1), BigInt(-1), BigInt(3),
               BigFloat(0), BigFloat(1), BigFloat(-1), BigFloat(3))
     numbers = (instances(Neutral)..., others...)

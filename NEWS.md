@@ -8,6 +8,8 @@ Versioning](https://semver.org/spec).
 
 ### Fixed
 
+- Fixes for irrationals in all Julia versions
+
 - Documentation for `𝟙`.
 
 - Improve documentation.
