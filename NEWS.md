@@ -8,6 +8,9 @@ Versioning](https://semver.org/spec).
 
 ### Fixed
 
+- In all bitwise binary operations, `-𝟙` becomes `~zero(T)` with `T` the type of the other
+  operand.
+
 - Fixes for irrationals in all Julia versions
 
 - Documentation for `𝟙`.

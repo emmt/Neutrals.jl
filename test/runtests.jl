@@ -71,6 +71,84 @@ oneunit(::Type{<:AbstractIrrational}) = true
               BigFloat(0), BigFloat(1), BigFloat(-1), BigFloat(3))
     numbers = (instances(Neutral)..., others...)
 
+    # Check assumptions made about how Julia treats ordinary numbers.
+    @testset "Assumptions" begin
+        # 0 and 1 are representable for any integer type.
+        @test Bool(0) === zero(Bool)
+        @test Bool(0) === (0 % Bool)
+        @test Bool(1) === one(Bool)
+        @test Bool(1) === (1 % Bool)
+        @test Int8(0) === zero(Int8)
+        @test Int8(0) === (0 % Int8)
+        @test Int8(1) === one(Int8)
+        @test Int8(1) === (1 % Int8)
+        @test UInt8(0) === zero(UInt8)
+        @test UInt8(0) === (0 % UInt8)
+        @test UInt8(1) === one(UInt8)
+        @test UInt8(1) === (1 % UInt8)
+        @test Int128(0) === zero(Int128)
+        @test Int128(0) === (0 % Int128)
+        @test Int128(1) === one(Int128)
+        @test Int128(1) === (1 % Int128)
+        @test UInt128(0) === zero(UInt128)
+        @test UInt128(0) === (0 % UInt128)
+        @test UInt128(1) === one(UInt128)
+        @test UInt128(1) === (1 % UInt128)
+        @test BigInt(0) == zero(BigInt)
+        @test BigInt(0) == (0 % BigInt)
+        @test BigInt(1) == one(BigInt)
+        @test BigInt(1) == (1 % BigInt)
+
+        # For signed integers, -1 is representable, not for unsigned ones. For integer
+        # type `T`, `((-1) % T)`, `-one(T)`, and `~zero(T)` are the same thing.
+        @test_throws InexactError Bool(-1)
+        @test -one(Bool) === -1 # Bool differently here
+        @test ((-1) % Bool) === true
+        @test ((-1) % Bool) === ~zero(Bool)
+        #
+        @test ((-1) % Int8) === Int8(-1)
+        @test ((-1) % Int8) === -one(Int8)
+        @test ((-1) % Int8) === ~zero(Int8)
+        #
+        @test_throws InexactError UInt8(-1)
+        @test ((-1) % UInt8) === -one(UInt8)
+        @test ((-1) % UInt8) === ~zero(UInt8)
+        #
+        @test ((-1) % Int128) === Int128(-1)
+        @test ((-1) % Int128) === -Int128(1)
+        @test ((-1) % Int128) === ~zero(Int128)
+        #
+        @test_throws InexactError UInt128(-1)
+        @test ((-1) % UInt128) === -one(UInt128)
+        @test ((-1) % UInt128) === ~zero(UInt128)
+        #
+        @test ((-1) % BigInt) == BigInt(-1)
+        @test ((-1) % BigInt) == -BigInt(1)
+        @test ((-1) % BigInt) == ~zero(BigInt)
+
+        # Optimization for rem(x, 𝟙) when x is an integer.
+        @test all(iszero, (rem(x, one(x)) for x in typemin(UInt8):typemax(UInt8)))
+        @test all(iszero, (rem(x, one(x)) for x in typemin(Int8):typemax(Int8)))
+
+        # Optimization for rem(x, -𝟙) when x is a signed integer.
+        @test all(iszero, (rem(x, -one(x)) for x in typemin(Int8):typemax(Int8)))
+
+        # Negating unsigned integers and complexes with unsigned integer parts
+        # is possible.
+        @test -(0x00) === 0x00
+        @test -(0x01) === 0xff
+        @test -(0xff) === 0x01
+        @test -complex(0x00, 0x00) === complex(-0x00,-0x00)
+        @test -complex(0x01, 0xff) === complex(-0x01,-0xff)
+
+        # Negating rationals with unsigned parts is forbidden.
+        @test_throws OverflowError -(0x01//0x01)
+
+        # Arithmetic operations combining an ordinary real and an irrational number yield
+        # Float64.
+        @test typeof(pi + 1) == Float64
+    end
+
     @testset "Neutral type and instances" begin
         @test length(instances(Neutral)) == 3
         @test_throws Exception Neutral(-2)
@@ -365,13 +443,18 @@ oneunit(::Type{<:AbstractIrrational}) = true
         @test_throws ArgumentError x - ZERO
         @test_throws ArgumentError x - ZERO
         @test_throws ArgumentError ZERO - x
+
+        # FIXME @test_throws ArgumentError convert(LengthInMeters{Float32}, x)
+        # FIXME y = @inferred convert(DimensionlessNumber{Float32}, x)
+        # FIXME @test y isa DimensionlessNumber{Float32}
+        # FIXME @test y.val === Float32(x)
     end
 
     @testset "Bitwise operation with values of type $T and $n" for T in (
         Bool, Int8, UInt16, Int, BigInt), n in instances(Neutral)
 
         # Set y to be the left operand as expected by the documented logic.
-        y = n == -1 ? (T <: Bool ? true : -one(T)) : T(n)
+        y = n == -1 ? ~zero(T) : T(n)
 
         x1 = (T <: Union{Bool,Unsigned} ? zero(T) : T(-15))::T
         x2 = (T <: Bool ? one(T) : T(15))::T

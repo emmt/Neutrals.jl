@@ -734,8 +734,12 @@ a neutral number.
 """
 impl_or(x::Neutral, y::Integer) = impl_or(y, x) # put neutral neutral second
 impl_or(x::Integer, ::Neutral{0}) = x
-impl_or(x::Integer, ::Neutral{1}) = x | impl_one(x)
-impl_or(x::Integer, ::Neutral{-1}) = -impl_one(x)
+impl_or(x::Integer, ::Neutral{1}) = x | one(x)
+impl_or(x::Integer, ::Neutral{-1}) = ~zero(x)
+
+# Optimize for Booleans.
+impl_or(x::Bool, ::Neutral{1}) = true
+impl_or(x::Bool, ::Neutral{-1}) = true
 
 """
     Neutrals.impl_and(x, y)
@@ -746,9 +750,12 @@ a neutral number.
 
 """
 impl_and(x::Neutral, y::Integer) = impl_and(y, x) # operation is commutative
-impl_and(x::Integer, ::Neutral{0}) = impl_zero(x)
-impl_and(x::Integer, ::Neutral{1}) = x & impl_one(x)
+impl_and(x::Integer, ::Neutral{0}) = zero(x)
+impl_and(x::Integer, ::Neutral{1}) = x & one(x)
 impl_and(x::Integer, ::Neutral{-1}) = x
+
+# Optimize for Booleans.
+impl_and(x::Bool, ::Neutral{1}) = x
 
 """
     Neutrals.impl_xor(x, y)
@@ -760,16 +767,10 @@ operand is a neutral number.
 """
 impl_xor(x::Neutral, y::Integer) = impl_xor(y, x) # operation is commutative
 impl_xor(x::Integer, ::Neutral{0}) = x
-impl_xor(x::Integer, ::Neutral{1}) = xor(x, impl_one(x))
-impl_xor(x::Integer, ::Neutral{-1}) = xor(x, -impl_one(x))
+impl_xor(x::Integer, ::Neutral{1}) = xor(x, one(x))
+impl_xor(x::Integer, ::Neutral{-1}) = xor(x, ~zero(x))
 
-# For bitwise operations with Booleans, `±𝟙` is seen as `true`.
-impl_or(x::Bool, ::Neutral{1}) = true
-impl_or(x::Bool, ::Neutral{-1}) = true
-#
-impl_and(x::Bool, ::Neutral{1}) = x
-impl_and(x::Bool, ::Neutral{-1}) = x
-#
+# Optimize for Booleans.
 impl_xor(x::Bool, ::Neutral{1}) = !x
 impl_xor(x::Bool, ::Neutral{-1}) = !x
 
