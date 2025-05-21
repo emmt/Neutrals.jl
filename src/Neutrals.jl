@@ -622,12 +622,11 @@ impl_mod(x::Integer, y::Neutral{-1}) = zero(type_signed(x)) # FIXME yield ZERO i
 #     rem(x::Bool, y::Bool) = y ? false : throw(DivideError())
 #     mod(x::Bool, y::Bool) = rem(x,y)
 #
-for v in (1, -1)
-    @eval begin
-        impl_tdv(x::Bool, y::Neutral{$v}) = x
-        impl_rem(x::Bool, y::Neutral{$v}) = false
-        impl_mod(x::Bool, y::Neutral{$v}) = false
-    end
+impl_tdv(x::Bool, y::Neutral{1}) = x
+impl_rem(x::Bool, y::Neutral{1}) = false
+impl_mod(x::Bool, y::Neutral{1}) = false
+for f in (:impl_tdv, :impl_rem, :impl_mod)
+    @eval $f(x::Bool, y::Neutral{-1}) = throw(InexactError(:convert, Bool, -ONE))
 end
 
 """

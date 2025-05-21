@@ -92,8 +92,18 @@ x/𝟙 -> x
 x/-𝟙 -> -x
 ```
 
-Similar rules are implemented for the quotient and remainder of the Euclidean division
-(`div` or `÷` and `rem` or `%`) and for the modulo (`mod`).
+### `div`, `rem`, and `mod`
+
+Similar rules are implemented for the quotient and remainder of the truncated division
+(`div` or `÷` and `rem` or `%`) and for the modulo (`mod`). In Julia, for `x` and `y`
+integers `div(x, y)` and `rem(x, y)` yield a result of the signedness of `x`, while
+`mod(x, y)` yields a result of the signedness of `y`. This rule is preserved when one of
+the operand is a neutral number, considering that neutral numbers are signed integers.
+
+For `div`, `rem`, and `mod` when one operand is a Boolean and the other is a neutral
+number the behavior implemented in Julia for Booleans is reflected. This implies that the
+neutral number be converted into a `Bool`. Hence, if the neutral operand is `-𝟙`, an
+`InexactError` is thrown.
 
 ## Bitwise binary operations
 

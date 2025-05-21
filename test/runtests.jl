@@ -435,7 +435,7 @@ end
             @test_throws DivideError mod(x, ZERO)
 
             # Division of unsigned rationals by -𝟙 (and conversely) is not possible.
-            if x isa UnsignedRational
+            if x isa Union{Bool,UnsignedRational}
                 @test_throws InexactError div(x, -ONE)
                 @test_throws InexactError rem(x, -ONE)
                 @test_throws InexactError mod(x, -ONE)
@@ -446,7 +446,24 @@ end
 
             # Test division of x by ±𝟙.
             if x isa Bool
-                nothing
+                @test div(x, ONE) === div(x, true)
+                @test rem(x, ONE) === rem(x, true)
+                @test mod(x, ONE) === mod(x, true)
+                if iszero(x)
+                    @test_throws DivideError div(ZERO, x)
+                    @test_throws DivideError rem(ZERO, x)
+                    @test_throws DivideError mod(ZERO, x)
+                    @test_throws DivideError div( ONE, x)
+                    @test_throws DivideError rem( ONE, x)
+                    @test_throws DivideError mod( ONE, x)
+                else
+                    @test div(ZERO, x) === div(false, x)
+                    @test rem(ZERO, x) === rem(false, x)
+                    @test mod(ZERO, x) === mod(false, x)
+                    @test div(ONE, x) === div(true, x)
+                    @test rem(ONE, x) === rem(true, x)
+                    @test mod(ONE, x) === mod(true, x)
+                end
             else
                 S = signed_type(typeof(x))
                 # Test division of x by 𝟙.
