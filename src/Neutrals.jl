@@ -13,12 +13,11 @@ export Neutral, ZERO, ONE
 
 using TypeUtils
 using TypeUtils: @public
-
 @public value
-@public impl_conv impl_zero impl_one impl_oneunit
+@public type_common type_signed
 @public impl_add impl_sub impl_mul impl_div impl_pow impl_inv
 @public impl_eq impl_lt impl_le impl_cmp impl_isless
-@public impl_trd impl_rem impl_mod
+@public impl_tdv impl_rem impl_mod
 @public impl_lshft impl_rshft impl_urshft
 @public impl_or impl_and impl_xor
 @public is_dimensionless
@@ -167,7 +166,13 @@ end
 const AnyNeutral = Union{map(typeof, instances(Neutral))...}
 const NonZeroNeutral = Union{Neutral{1},Neutral{-1}}
 const NonNegativeNeutral = Union{Neutral{0},Neutral{1}}
-const BigNumber = Union{BigInt,BigFloat}
+
+# There are special rules for "unsigned" numbers which cannot be used to represent
+# negative numbers.
+const UnsignedRational = Rational{<:Union{Bool,Unsigned}}
+const UnsignedReal = Union{Bool,Unsigned,UnsignedRational}
+const UnsignedComplex = Complex{<:UnsignedReal}
+const UnsignedNumber = Union{UnsignedReal,UnsignedComplex}
 
 # `BareNumbers` are dimensionless.
 const BareNumber = Union{Real,Complex}
@@ -193,8 +198,10 @@ for (T, name, descr) in ((Neutral{0}, "𝟘",
     end
 end
 
-# Conversion rules for bare numeric types. No needs to directly extend `Base.convert`
-# which calls `T(x)` for numbers except for Booleans.
+#---------------------------------------------------------------------------- CONVERSION -
+
+# Conversion rules for bare numeric types. No needs to extend `Base.convert` because
+# `Base.convert(T,x)` amounts to calling `T(x)` for any numeric type `T`.
 for T in (Bool,
           Int8, Int16, Int32, Int64, Int128, BigInt,
           UInt8, UInt16, UInt32, UInt64, UInt128,
@@ -204,39 +211,22 @@ for T in (Bool,
         @eval (::Type{$T})(x::Neutral{-1}) = throw(InexactError(:convert, $T, x))
     end
 end
+(::Type{Number})(x::Neutral) = x
+(::Type{Real})(x::Neutral) = x
+(::Type{Integer})(x::Neutral) = x
 (::Type{Rational{T}})(x::Neutral) where {T<:Integer} = Rational(T(x))
 (::Type{Rational})(x::Neutral) = Rational(value(x), 1)
 (::Type{Complex{T}})(x::Neutral) where {T<:Real} = Complex(T(x), T(0))
 (::Type{Complex})(x::Neutral) = Complex(value(x), 0)
 (::Type{AbstractFloat})(x::Neutral) = float(value(x))
-(::Type{AbstractIrrational})(x::Neutral) = impl_conv(AbstractIrrational, x)
-Base.convert(::Type{Bool}, x::Neutral{ 0}) = false
-Base.convert(::Type{Bool}, x::Neutral{ 1}) = true
-Base.convert(::Type{Bool}, x::Neutral{-1}) = throw(InexactError(:convert, Bool, -ONE))
-
-
-# Conversion rules for any other numeric type `T` and assuming efficient implementations
-# of `zero(T)` and `one(T)`
-Base.convert(::Type{Integer}, x::Neutral) = x
-Base.convert(::Type{T}, x::Neutral) where {T<:BareNumber} = impl_conv(T, x)
-Base.convert(::Type{T}, x::Neutral) where {T<:Number} =
-    is_dimensionless(T) ? impl_conv(T, x) : throw_convert_neutral_to_dimensionful_type(T, x)
+(::Type{T})(x::Neutral) where {T<:AbstractIrrational} = throw(InexactError(:convert, T, x))
+(::Type{T})(x::Neutral) where {T<:BareNumber} =
+    is_dimensionless(T) ? T(value(x)) : throw_convert_neutral_to_dimensionful_type(T, x)
 
 @noinline throw_convert_neutral_to_dimensionful_type(::Type{T}, x::Neutral) where {T} =
     throw(ArgumentError("cannot convert $x to dimensionful type $T"))
 
-"""
-    Neutrals.impl_conv(T, x)
-
-implements `convert(T, x)` for type `T` and neutral number `x`. Type `T` must be
-dimensionless.
-
-"""
-impl_conv(::Type{T}, x::Neutral{0}) where {T<:BareNumber} = impl_zero(T)
-impl_conv(::Type{T}, x::Neutral{1}) where {T<:BareNumber} = impl_one(T)
-impl_conv(::Type{T}, x::Neutral{-1}) where {T<:BareNumber} = -impl_one(T)
-impl_conv(::Type{T}, x::Neutral{-1}) where {T<:Union{Bool,Unsigned,Rational{<:Union{Bool,Unsigned}},Complex{<:Union{Bool,Unsigned}}}} =
-    throw(InexactError(:convert, T, x))
+#---------------------------------------------------------------------- UNARY OPERATIONS -
 
 # Extend unary `-` for neutral numbers. Unary `+`, `*`, `&`, `|`, and `xor` do not need to
 # be extended for numbers (see base/operators.jl).
@@ -292,14 +282,65 @@ for T in (:Bool, :BigInt) # remove ambiguities for these types
     @eval Base.rem(::Neutral{x}, ::Type{$T}) where {x} = x % $T
 end
 
+#----------------------------------------------------------------------- PROMOTION RULES -
+
+"""
+    Neutrals.type_common(x) -> T
+    Neutrals.type_common(typeof(x)) -> T
+
+yield the dimensionless type `T` to convert a neutral number operand in common binary
+operations (additions, subtractions, and comparisons) when the other operand is of the
+type of `x`.
+
+See also [`Neutrals.type_signed`](@ref), [`Neutrals.impl_add`](@ref),
+[`Neutrals.impl_sub`](@ref), [`Neutrals.impl_eq`](@ref), [`Neutrals.impl_lt`](@ref),
+[`Neutrals.impl_le`](@ref), and [`Neutrals.impl_cmp`](@ref).
+
+"""
+type_common(x::Number) = type_common(typeof(x))
+type_common(::Type{T}) where {T<:Number} = _type_common(bare_type(T))
+_type_common(::Type{T}) where {T<:Real} = T
+_type_common(::Type{T}) where {T<:AbstractIrrational} = Float64
+_type_common(::Type{Rational{T}}) where {T} = _type_common(T)
+_type_common(::Type{Complex{T}}) where {T} = _type_common(T)
+_type_common(::Type{BigInt}) = Clong # see `base/gmp.jl`
+_type_common(::Type{BigFloat}) = Clong # see `base/mpfr.jl`
+
+"""
+    Neutrals.type_signed(x) -> T
+    Neutrals.type_signed(typeof(x)) -> T
+
+yield the dimensionless type `T` to convert a neutral number operand in some binary
+operations (quotient or remainder of truncated division, and modulo) when the other
+operand is of the type of `x` and when the signedness of the neutral number must be
+preserved to reflect the usual behavior of the binary operation in Julia.
+
+See also [`Neutrals.type_common`](@ref), [`Neutrals.impl_tdv`](@ref),
+[`Neutrals.impl_rem`](@ref), and [`Neutrals.impl_mod`](@ref).
+
+"""
+type_signed(x::Number) = type_signed(typeof(x))
+type_signed(::Type{T}) where {T<:Number} = _type_signed(bare_type(T))
+_type_signed(::Type{T}) where {T<:Real} = T
+_type_signed(::Type{T}) where {T<:AbstractIrrational} = Float64
+_type_signed(::Type{Rational{T}}) where {T} = _type_signed(T)
+_type_signed(::Type{Complex{T}}) where {T} = _type_signed(T)
+_type_signed(::Type{T}) where {T<:Signed} = T
+_type_signed(::Type{T}) where {T<:Unsigned} = signed(T)
+# NOTE For `div`, `rem`, and `mod` with a big number, the other operand is promoted to a
+#      big number. Thus, the above rule for `Real` is suitable.
+
 # Extend `Base.promote_rule` when one of the argument is a neutral number. For two neutral
 # numbers, the default is to convert them to `Int`. For `Bool`, the symmetric promote rule
 # must be given to avoid overflows.
 Base.promote_rule(::Type{<:Neutral}, ::Type{<:Neutral}) = Int
 Base.promote_rule(::Type{<:Neutral}, ::Type{T}) where {T<:Number} = T
+Base.promote_rule(::Type{<:Neutral}, ::Type{<:AbstractIrrational}) = Float64
 Base.promote_rule(::Type{Bool}, ::Type{<:Neutral}) = Bool
 Base.promote_rule(::Type{Bool}, ::Type{Neutral{-1}}) = Int
 Base.promote_rule(::Type{Neutral{-1}}, ::Type{Bool}) = Int
+
+#--------------------------------------------------------------------- BINARY OPERATIONS -
 
 # For some binary operations involving neutral numbers, it is sufficient to apply the base
 # method for the arguments promoted according to promotion rules. Other operations must be
@@ -323,11 +364,13 @@ Base.promote_rule(::Type{Neutral{-1}}, ::Type{Bool}) = Int
 #     +(x::Integer,  y::BigInt)   in `base/gmp.jl`
 #     +(x::BigInt,   x::Integer)  in `base/gmp.jl`
 #
-# and similarly for `-`, for comparing numbers:
+# similarly for `-`, for comparing numbers:
 #
 #     ==(x::Number, y::Number) in `basae/promotion.jl`
 #     <( x::Real, y::Real)     in `basae/promotion.jl`
 #     <=(x::Real, y::Real)     in `basae/promotion.jl`
+#
+# and so on.
 #
 # Override base methods to call corresponding implementation:
 for (f, (g, w, Ts)) in (:(+)   => (:impl_add,    3, (:Number, :Integer, :Rational,
@@ -341,13 +384,13 @@ for (f, (g, w, Ts)) in (:(+)   => (:impl_add,    3, (:Number, :Integer, :Rationa
                         :(^)   => (:impl_pow,    2, (:Number, :Rational, :BigInt,
                                                      :Float16, :Float32, :Float64, :BigFloat,
                                                      :Complex, :(Complex{<:AbstractFloat}))),
-                        :div   => (:impl_trd,    3, (:Integer,)),
-                        :rem   => (:impl_rem,    3, (:Integer,)),
-                        :mod   => (:impl_mod,    3, (:Integer,)),
+                        :div   => (:impl_tdv,    3, (:Real, :Rational)),
+                        :rem   => (:impl_rem,    3, (:Real, :Rational)),
+                        :mod   => (:impl_mod,    3, (:Real, :Rational)),
                         :(==)  => (:impl_eq,     3, (:Number, :Rational, :AbstractIrrational,
                                                      :BigInt, :BigFloat)),
-                        :(<)   => (:impl_lt,     3, (:Real, :Rational)),
-                        :(<=)  => (:impl_le,     3, (:Real, :Rational)),
+                        :(<)   => (:impl_lt,     3, (:Real, :Rational, :BigInt, :BigFloat)),
+                        :(<=)  => (:impl_le,     3, (:Real, :Rational, :BigInt, :BigFloat)),
                         :cmp   => (:impl_cmp,    3, (:Number, :Integer, :BigInt, :BigFloat)),
                         :(|)   => (:impl_or,     3, (:Integer,)),
                         :(&)   => (:impl_and,    3, (:Integer,)),
@@ -395,7 +438,7 @@ for x in instances(Neutral), y in instances(Neutral)
 
     # Division, modulo, etc.
     for (f, g) in (:(/) => :impl_div,
-                   :div => :impl_trd,
+                   :div => :impl_tdv,
                    :rem => :impl_rem,
                    :mod => :impl_mod)
         if y === ZERO
@@ -430,49 +473,6 @@ if VERSION < v"1.2.0-rc2"
 end
 
 """
-    Neutrals.impl_zero(x) -> zero(x)
-    Neutrals.impl_zero(typeof(x)) -> zero(x)
-
-implements dimensionful zero (additive identity) for numbers of the type of `x`. Default
-to `zero(x)`. It is sufficient to extend the method whose argument is a type.
-
-"""
-impl_zero(x::Number) = impl_zero(typeof(x))
-impl_zero(::Type{T}) where {T} = zero(T)
-
-"""
-    Neutrals.impl_one(x) -> one(x)
-    Neutrals.impl_one(typeof(x)) -> one(x)
-
-implements dimensionless one (multiplicative identity) for numbers of the type of `x`.
-Default to `one(x)`. It is sufficient to extend the method whose argument is a type.
-
-"""
-impl_one(x::Number) = impl_one(typeof(x))
-impl_one(::Type{T}) where {T} = one(T)
-
-if VERSION < v"1.5.0-rc1"
-    # `zero(x)` and `one(x)` were not implemented for irrational numbers prior to Julia
-    # 1.5.0-rc1
-    impl_zero(::Type{<:AbstractIrrational}) = false
-    impl_one(::Type{<:AbstractIrrational}) = true
-end
-
-"""
-    Neutrals.impl_oneunit(x) -> oneunit(x)
-    Neutrals.impl_oneunit(typeof(x)) -> oneunit(x)
-
-implements dimensionful one for numbers of the type of `x`. Default to `one(x)`. It is
-sufficient to extend the method whose argument is a type.
-
-"""
-impl_oneunit(x::Number) = impl_oneunit(typeof(x))
-impl_oneunit(::Type{T}) where {T} = oneunit(T)
-
-# There is no `oneunit` for irrational numbers.
-impl_oneunit(::Type{<:AbstractIrrational}) = 1.0
-
-"""
     Neutrals.impl_add(x, y) -> x + y
 
 implements addition of numbers `x` and `y` when at least one of the operands is a neutral
@@ -485,8 +485,8 @@ number.
 impl_add(x::Neutral, y::Number) = impl_add(y, x) # put neutral number second
 impl_add(x::BareNumber, ::Neutral{0}) = x
 impl_add(x::Number, ::Neutral{ 0}) = is_dimensionless(x) ? x : throw_add_dimensionful_and_zero()
-impl_add(x::Number, ::Neutral{ 1}) = x + impl_one(x)
-impl_add(x::Number, ::Neutral{-1}) = x - impl_one(x)
+impl_add(x::Number, ::Neutral{ 1}) = x + convert(type_common(x), 1)
+impl_add(x::Number, ::Neutral{-1}) = x - convert(type_common(x), 1)
 
 @noinline throw_add_dimensionful_and_zero() =
     throw(ArgumentError("𝟘 and dimensionful quantity cannot be added"))
@@ -500,13 +500,16 @@ neutral number.
 """
 impl_sub(x::BareNumber, ::Neutral{0}) = x
 impl_sub(x::Number, ::Neutral{ 0}) = is_dimensionless(x) ? x : throw_sub_dimensionful_and_zero()
-impl_sub(x::Number, ::Neutral{ 1}) = x - impl_one(x)
-impl_sub(x::Number, ::Neutral{-1}) = x + impl_one(x)
+impl_sub(x::Number, ::Neutral{ 1}) = x - convert(type_common(x), 1)
+impl_sub(x::Number, ::Neutral{-1}) = x + convert(type_common(x), 1)
 
 impl_sub(::Neutral{ 0}, x::BareNumber) = -x
 impl_sub(::Neutral{ 0}, x::Number) = is_dimensionless(x) ? -x : throw_sub_dimensionful_and_zero()
-impl_sub(::Neutral{ 1}, x::Number) = impl_one(x) - x
-impl_sub(::Neutral{-1}, x::Number) = -impl_one(x) - x
+impl_sub(::Neutral{ 1}, x::Number) = convert(type_common(x),  1) - x
+impl_sub(::Neutral{-1}, x::Number) = convert(type_signed(x), -1) - x
+# NOTE The rationale to have `type_signed` above is that `-𝟙` is not representable
+#      otherwise and, for all integers but notably the unsigned ones,
+#      `-one(signed(typeof(x))) - x` yield the same result as the above expression.
 
 @noinline throw_sub_dimensionful_and_zero() =
     throw(ArgumentError("𝟘 and dimensionful quantity cannot be subtracted"))
@@ -553,19 +556,12 @@ impl_div(::Neutral{ 1}, x::Number) = impl_inv(x)
 impl_div(::Neutral{-1}, x::Number) = -impl_inv(x)
 
 """
-    Neutrals.impl_trd(x, y) -> x ÷ y
+    Neutrals.impl_tdv(x, y) -> x ÷ y
 
 implements the truncated division of `x` by `y` that is the quotient of `x` by `y` rounded
 toward zero. This corresponds to `div(x,y,RoundToZero)`.
 
-"""
-impl_trd(x::Real, y::Neutral{0}) = throw(DivideError())
-impl_trd(x::Real, y::Neutral) = x ÷ value(y)
-impl_trd(x::Neutral, y::Real) = value(x) ÷ x
-
-# Specialize for integers and for `±𝟙`.
-impl_trd(x::Integer, y::Neutral{1}) = x
-impl_trd(x::Integer, y::Neutral{-1}) = -x
+""" impl_tdv
 
 """
     Neutrals.impl_rem(x, y) -> rem(x, y)
@@ -576,15 +572,7 @@ The remainder function satisfies `x == div(x,y)*y + rem(x,y)` with `div` the tru
 division which yields the quotient rounded toward zero, implying that sign matches `x`.
 
 """
-impl_rem(x::Real, y::Neutral{0}) = throw(DivideError())
-impl_rem(x::Real, y::Neutral) = rem(x, oftype(x, value(y)))
-impl_rem(x::Neutral, y::Real) = rem(oftype(y, value(x)), y)
-
-# Specialize implementation for integers and for `±𝟙`. For Booleans, the following rules
-# for integers amount to assuming that the result does not depend on the sign of the right
-# operand.
-impl_rem(x::Integer, y::Neutral{1}) = impl_zero(x)
-impl_rem(x::Integer, y::Neutral{-1}) = impl_zero(x)
+impl_rem
 
 """
     Neutrals.impl_mod(x, y) -> mod(x, y)
@@ -594,16 +582,47 @@ implements `mod` when at least one of the operands is a neutral number.
 The modulus function satisfies `x == fld(x,y)*y + mod(x,y)`, with `fld` the floored
 division which yields the rounded towards `-Inf`, implying that sign matches `y`.
 
-"""
-impl_mod(x::Real, y::Neutral{0}) = throw(DivideError())
-impl_mod(x::Real, y::Neutral) = mod(x, oftype(x, value(y)))
-impl_mod(x::Neutral, y::Real) = mod(oftype(y, value(x)), y)
+""" impl_mod
 
-# Specialize implementation for integers and for `±𝟙`. For Booleans, the following rules
-# for integers amount to assuming that the result does not depend on the sign of the right
-# operand.
-impl_mod(x::Integer, y::Neutral{1}) = impl_zero(x)
-impl_mod(x::Integer, y::Neutral{-1}) = impl_zero(x)
+# In Julia, `div` and `rem` yield a result of the signedness of the 1st operand, while
+# `mod` yields a result of the signedness of the 2nd operand. For these operations, a
+# neutral number is thus converted to a signed value whose type is based on that of the
+# other operand.
+for (f, g) in (:div => :impl_tdv, :rem => :impl_rem, :mod => :impl_mod)
+    @eval begin
+        $g(x::Real, y::Neutral{0}) = throw(DivideError())
+        $g(x::Real, y::Neutral) = $f(x, convert(type_signed(x), y))
+        $g(x::Neutral, y::Real) = $f(convert(type_signed(y), x), y)
+    end
+end
+
+# Specialize implementation for integers(not Booleans) and for `±𝟙` considering that
+# neutral numbers are signed integers.
+#
+# Quotient of truncated division is of the signedness of the 1st operand.
+impl_tdv(x::Integer, y::Neutral{1}) = x
+#
+# Remainder of truncated division is of the signedness of the `st operand.
+impl_rem(x::Integer, y::Neutral{1}) = zero(x) # FIXME yield ZERO instead?
+impl_rem(x::Signed, y::Neutral{-1}) = zero(x) # FIXME yield ZERO instead?
+#
+# Modulo is of the signedness of the 2nd operand and is 0 if 2nd operand is -1.
+impl_mod(x::Integer, y::Neutral{1}) = zero(type_signed(x)) # FIXME yield ZERO instead?
+impl_mod(x::Integer, y::Neutral{-1}) = zero(type_signed(x)) # FIXME yield ZERO instead?
+#
+# For Booleans, implementation of `div`, `rem`, and `mod` in `base/bool.jl` is:
+#
+#     div(x::Bool, y::Bool) = y ? x : throw(DivideError())
+#     rem(x::Bool, y::Bool) = y ? false : throw(DivideError())
+#     mod(x::Bool, y::Bool) = rem(x,y)
+#
+for v in (1, -1)
+    @eval begin
+        impl_tdv(x::Bool, y::Neutral{$v}) = x
+        impl_rem(x::Bool, y::Neutral{$v}) = false
+        impl_mod(x::Bool, y::Neutral{$v}) = false
+    end
+end
 
 """
     Neutrals.impl_pow(x, y) -> x^y
@@ -611,9 +630,12 @@ impl_mod(x::Integer, y::Neutral{-1}) = impl_zero(x)
 implements raising number `x` to the power `y` when `y` is a neutral number.
 
 """
-impl_pow(x::Number, ::Neutral{0}) = impl_oneunit(x)
+impl_pow(x::Number, ::Neutral{0}) = oneunit(x)
 impl_pow(x::Number, ::Neutral{1}) = x
 impl_pow(x::Number, ::Neutral{-1}) = impl_inv(x)
+
+# There is no `oneunit` for irrational numbers.
+impl_pow(x::AbstractIrrational, ::Neutral{0}) = 1.0
 
 """
     Neutrals.impl_eq(x, y) -> x == y
@@ -626,36 +648,58 @@ number.
 """
 impl_eq(x::Neutral, y::Number) = impl_eq(y, x) # put neutral number second
 impl_eq(x::Number, ::Neutral{ 0}) = is_dimensionless(x) && iszero(x)
-impl_eq(x::Number, ::Neutral{ 1}) = isone(x)
-impl_eq(x::Number, ::Neutral{-1}) = x == -impl_one(x)
+impl_eq(x::Number, ::Neutral{ 1}) = isone(x) # NOTE faster than `x == convert(type_common(x), 1)`?
+impl_eq(x::Number, ::Neutral{-1}) = x == convert(type_common(x), -1)
+
+# Optimize comparison of an unsigned real and a neutral number.
+impl_eq(x::UnsignedReal, y::Neutral{-1}) = false
+#
+impl_eq(x::Bool, y::Neutral{1}) = x
+impl_eq(x::Bool, y::Neutral{0}) = !x
+
+# Neutral numbers are integers and are never equal to irrational numbers.
+for n in instances(Neutral)
+    @eval impl_eq(x::AbstractIrrational, y::$(typeof(n))) = false
+end
 
 """
     Neutrals.impl_lt(x, y) -> x < y
 
 implements `<` for real numbers when at least one of the operands is a neutral number.
 
-"""
-impl_lt(x::Real, y::Neutral{ 0}) = x < impl_zero(x)
-impl_lt(x::Real, y::Neutral{ 1}) = x <  impl_one(x)
-impl_lt(x::Real, y::Neutral{-1}) = x < -impl_one(x)
+""" impl_lt
 
-impl_lt(x::Neutral{ 0}, y::Real) = impl_zero(y) < y
-impl_lt(x::Neutral{ 1}, y::Real) =  impl_one(y) < y
-impl_lt(x::Neutral{-1}, y::Real) = -impl_one(y) < y
+# Optimize comparison of an unsigned real and a neutral number.
+impl_lt(x::UnsignedReal, y::Neutral{0}) = false
+impl_lt(x::UnsignedReal, y::Neutral{-1}) = false
+impl_lt(x::Neutral{-1}, y::UnsignedReal) = true
+#
+impl_lt(x::Bool, y::Neutral{1}) = !x
+impl_lt(x::Neutral{0}, y::Bool) = y
+impl_lt(x::Neutral{1}, y::Bool) = false
 
 """
     Neutrals.impl_le(x, y) -> x ≤ y
 
 implements `≤` for real numbers when at least one of the operands is a neutral number.
 
-"""
-impl_le(x::Real, y::Neutral{ 0}) = x <= impl_zero(x)
-impl_le(x::Real, y::Neutral{ 1}) = x <=  impl_one(x)
-impl_le(x::Real, y::Neutral{-1}) = x <= -impl_one(x)
+""" impl_le
 
-impl_le(x::Neutral{ 0}, y::Real) = impl_zero(y) <= y
-impl_le(x::Neutral{ 1}, y::Real) =  impl_one(y) <= y
-impl_le(x::Neutral{-1}, y::Real) = -impl_one(y) <= y
+# Optimize comparison of an unsigned real and a neutral number.
+impl_le(x::UnsignedReal, y::Neutral{-1}) = false
+impl_le(x::Neutral{0}, y::UnsignedReal) = true
+impl_le(x::Neutral{-1}, y::UnsignedReal) = true
+#
+impl_le(x::Bool, y::Neutral{0}) = !x
+impl_le(x::Bool, y::Neutral{1}) = true
+impl_le(x::Neutral{1}, y::Bool) = y
+
+for (f, g) in (:(<) => :impl_lt, :(<=) => :impl_le)
+    @eval begin
+        $g(x::Real, y::Neutral) = $f(x, convert(type_common(x), y))
+        $g(x::Neutral, y::Real) = $f(convert(type_common(y), x), y)
+    end
+end
 
 """
     Neutrals.impl_cmp(x, y) -> cmp(x, y)
@@ -670,6 +714,12 @@ impl_cmp(x::Neutral, y::Real) = -impl_cmp(y, x) # put neutral number second
 impl_cmp(x::Integer, y::Neutral) = ifelse(impl_isless(x, y), -1, ifelse(impl_isless(y, x), 1, 0))
 impl_cmp(x::Real, y::Neutral) = impl_isless(x, y) ? -1 : ifelse(impl_isless(y, x), 1, 0)
 
+# Optimize comparison of an unsigned real and a neutral number.
+impl_cmp(x::UnsignedReal, y::Neutral{-1}) = 1
+impl_cmp(x::UnsignedReal, y::Neutral{0}) = iszero(x) ? 0 : 1
+#
+impl_cmp(x::Bool, y::Neutral{1}) = x ? 0 : -1
+
 """
     Neutrals.impl_isless(x, y) -> isless(x, y)
 
@@ -682,40 +732,6 @@ implements `isless` for real numbers when at least one of the operands is a neut
 #      isless(x, y) =  isnan(x) || isnan(b) ? !isnan(x) : x < y
 @inline impl_isless(x::AbstractFloat, y::Neutral) = isnan(x) ? false : x < oftype(x, value(y))
 @inline impl_isless(x::Neutral, y::AbstractFloat) = isnan(y) ? true : oftype(y, value(x)) < y
-
-# Specialize methods implementing comparisons for cases involving an unsigned real and, at
-# least, `-𝟙` which cannot be converted to an unsigned real.
-for T in (Bool, Unsigned, Rational{<:Union{Bool,Unsigned}})
-    @eval begin
-        impl_eq(x::$T, y::Neutral{-1}) = false
-        #
-        impl_lt(x::$T, y::Neutral{0}) = false
-        impl_lt(x::$T, y::Neutral{-1}) = false
-        impl_lt(x::Neutral{-1}, y::$T) = true
-        #
-        impl_le(x::$T, y::Neutral{-1}) = false
-        impl_le(x::Neutral{0}, y::$T) = true
-        impl_le(x::Neutral{-1}, y::$T) = true
-        #
-        impl_cmp(x::$T, y::Neutral{-1}) = 1
-        impl_cmp(x::$T, y::Neutral{0}) = iszero(x) ? 0 : 1
-    end
-end
-
-# When neutral operand is not `-𝟙` (this case is considered elsewhere for unsigned reals),
-# avoid promotion for comparison a Boolean and a neutral number.
-impl_eq(x::Bool, y::Neutral{1}) = x
-impl_eq(x::Bool, y::Neutral{0}) = !x
-#
-impl_lt(x::Bool, y::Neutral{1}) = !x
-impl_lt(x::Neutral{0}, y::Bool) = y
-impl_lt(x::Neutral{1}, y::Bool) = false
-#
-impl_le(x::Bool, y::Neutral{0}) = !x
-impl_le(x::Bool, y::Neutral{1}) = true
-impl_le(x::Neutral{1}, y::Bool) = y
-#
-impl_cmp(x::Bool, y::Neutral{1}) = x ? 0 : -1
 
 # For bitwise operations (`|`, `&`, and `xor`) between integers (including Booleans and
 # big integers) of mixed types, the called methods are defined in `base/int.jl` and
@@ -824,16 +840,16 @@ This method must be extended for other numbers.
 is_dimensionless(x::Number) = is_dimensionless(typeof(x))
 is_dimensionless(::Type{<:BareNumber}) = true
 
-#-----------------------------------------------------------------------------------------
-# BIG NUMBERS
+#--------------------------------------------------------------------------- BIG NUMBERS -
 #
-# As can be seen in `base/gmp.jl` and `base/mpfr.jl`, for `==`, `<`, and `<=` with a big
-# number and a non-big number, the result is given by `cmp`. So there are no needs to
-# specialize `==`, `<`, and `<=` to handle these cases, only `cmp` may be specialized. For
-# big floats, `cmp` converts the non-big operand to a big float so there nothing to do
-# here. For big integers, `cmp` with a non-big integer `c` of size not larger than a
-# `Clong` calls one of the compiled methods with `c` as a `Clong` or as a `Culong`. Hence,
-# we only have to specialize `cmp` for a big integer and a neutral number.
+# As can be seen in `base/gmp.jl` and `base/mpfr.jl`, the result of a comparison with
+# `==`, `<`, or `<=` between a big number and a non-big number is given by `cmp`. So there
+# are no needs to specialize `==`, `<`, and `<=` to handle these cases, only `cmp` may be
+# specialized. For big floats, `cmp` converts the non-big operand to a big float so there
+# nothing to do here. For big integers, `cmp` with a non-big integer `c` of size not
+# larger than a `Clong` calls one of the compiled methods with `c` as a `Clong` or as a
+# `Culong`. Hence, we only have to specialize `cmp` for a big integer and a neutral
+# number.
 impl_cmp(x::BigInt, y::Neutral{ 0}) = cmp(x, Culong(0))
 impl_cmp(x::BigInt, y::Neutral{ 1}) = cmp(x, Culong(1))
 impl_cmp(x::BigInt, y::Neutral{-1}) = cmp(x, Clong(-1))
@@ -864,18 +880,10 @@ for T in (:BigInt, :BigFloat)
 
         # Equality. It is only needed to extend the rules for `-𝟙`.
         impl_eq(x::$T, y::Neutral{-1}) = x == Clong(-1)
-
-        # Less than.
-        Base.:<(x::$T, y::Neutral) = x < Clong(y)
-        Base.:<(x::Neutral, y::$T) = Clong(x) < y
-
-        # Less or equal.
-        Base.:<=(x::$T, y::Neutral) = x <= Clong(y)
-        Base.:<=(x::Neutral, y::$T) = Clong(x) <= y
     end
 end
 
-#-----------------------------------------------------------------------------------------
+#------------------------------------------------------------------------ INITIALIZATION -
 
 function __init__()
     @static if !isdefined(Base, :get_extension)

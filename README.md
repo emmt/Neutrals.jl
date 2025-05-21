@@ -79,8 +79,8 @@ julia> 𝟘*(3kg)
 
 ### Division
 
-The rules for the division involving a neutral number and any dimensionless number `x`
-follow from those of the multiplication:
+The rules for the division involving a neutral number and any number `x` follow from those
+of the multiplication:
 
 ``` julia
 𝟘/x -> 𝟘         # if `x` is dimensionless
@@ -183,7 +183,7 @@ cmp(-𝟙, u) -> -1
 As for other numbers, a neutral number `n` (`𝟘`, `𝟙`, or `-𝟙`) can be converted into a
 numeric type `T` by `T(n)` which yields a value of type `T`. This operation is always
 successful for `𝟘` and `𝟙` which are representable by any numeric type. For `-𝟙`, an
-`InexactError` exception is thrown if `T` is not a signed type this includes Booleans,
+`InexactError` exception is thrown if `T` is not a signed type, this includes Booleans,
 unsigned integers, but also rationals and complexes with Boolean or unsigned parts. As for
 any non-big integer, `AbstractFloat(n)` and `float(n)` both yield `n` converted to
 `Float64`.

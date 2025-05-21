@@ -11,6 +11,10 @@ struct LengthInMeters{T<:Real} <: Number
     len::T
 end
 
+const UnsignedRational = Rational{<:Union{Bool,Unsigned}}
+const UnsignedReal = Union{Bool,Unsigned,UnsignedRational}
+const UnsignedComplex = Complex{<:UnsignedReal}
+
 Neutrals.is_dimensionless(::Type{<:LengthInMeters}) = false
 Base.zero(::Type{LengthInMeters{T}}) where {T} = LengthInMeters(zero(T))
 Base.one(::Type{LengthInMeters{T}}) where {T} = one(T)
@@ -22,8 +26,6 @@ struct DimensionlessNumber{T<:Real} <: Number
 end
 
 Neutrals.is_dimensionless(::Type{<:DimensionlessNumber}) = true
-Neutrals.impl_conv(::Type{DimensionlessNumber{T}}, x::Neutral) where {T} =
-    DimensionlessNumber{T}(x)
 Base.zero(::Type{DimensionlessNumber{T}}) where {T} = DimensionlessNumber(zero(T))
 Base.one(::Type{DimensionlessNumber{T}}) where {T} = DimensionlessNumber(one(T))
 Base.oneunit(::Type{DimensionlessNumber{T}}) where {T} = DimensionlessNumber(oneunit(T))
@@ -47,8 +49,18 @@ end
 oneunit(::AbstractIrrational) = true
 oneunit(::Type{<:AbstractIrrational}) = true
 
+maybe(::Type{Neutral}, x::Integer) = (-1 ≤ x ≤ 1 ? Neutral(x) : x)
+
+storage_type(::Type{T}) where {T<:Real} = T
+storage_type(::Type{Complex{T}}) where {T} = storage_type(T)
+storage_type(::Type{Rational{T}}) where {T} = T
+
+signed_type(::Type{T}) where {T<:Real} = T
+signed_type(::Type{T}) where {T<:Unsigned} = signed(T)
+signed_type(::Type{Complex{T}}) where {T} = Complex{signed_type(T)}
+signed_type(::Type{Rational{T}}) where {T} = Rational{signed_type(T)}
+
 @testset "Neutrals.jl" begin
-    maybe(::Type{Neutral}, x::Integer) = (-1 ≤ x ≤ 1 ? Neutral(x) : x)
     types = (Integer,
              Bool,
              Int8, Int16, Int32, Int64, Int128, BigInt,
@@ -126,12 +138,17 @@ oneunit(::Type{<:AbstractIrrational}) = true
         @test ((-1) % BigInt) == -BigInt(1)
         @test ((-1) % BigInt) == ~zero(BigInt)
 
-        # Optimization for rem(x, 𝟙) when x is an integer.
-        @test all(iszero, (rem(x, one(x)) for x in typemin(UInt8):typemax(UInt8)))
-        @test all(iszero, (rem(x, one(x)) for x in typemin(Int8):typemax(Int8)))
+        # Optimization for rem(x, 𝟙) and mod(x, 𝟙) when x is an integer.
+        @testset "`$f(x, one(x)) == zero(x)` for `typeof(x) = $T`" for f in (rem, mod), T in (Bool, Int8, UInt8)
+            @test all(iszero, (f(x, one(x)) for x in typemin(T):typemax(T)))
+        end
 
-        # Optimization for rem(x, -𝟙) when x is a signed integer.
+        # Optimization for rem(x, -𝟙) and mod(x, -𝟙) when x is a signed integer.
+        @testset "`$f(x, one(x)) == zero(x)` for `typeof(x) = $T`" for f in (rem, mod), T in (Bool, Int8, UInt8)
+            @test all(iszero, (f(x, one(x)) for x in typemin(T):typemax(T)))
+        end
         @test all(iszero, (rem(x, -one(x)) for x in typemin(Int8):typemax(Int8)))
+        @test all(iszero, (mod(x, -one(x)) for x in typemin(Int8):typemax(Int8)))
 
         # Negating unsigned integers and complexes with unsigned integer parts
         # is possible.
@@ -200,6 +217,7 @@ oneunit(::Type{<:AbstractIrrational}) = true
         @test AbstractFloat(x) === float(Int(x))
         @test Rational(x) === Int(x)//1
         @test Complex(x) === Int(x) + 0im
+        @test_throws InexactError AbstractIrrational(x)
     end
 
     @testset "Unary functions of $x" for x in instances(Neutral)
@@ -263,10 +281,6 @@ oneunit(::Type{<:AbstractIrrational}) = true
             @test y isa T
             @test y == (Int(x) % T)
         end
-        @test_throws ArgumentError convert(LengthInMeters{Float32}, x)
-        y = @inferred convert(DimensionlessNumber{Float32}, x)
-        @test y isa DimensionlessNumber{Float32}
-        @test y.val === Float32(x)
     end
 
     @testset "Promote rules" begin
@@ -287,6 +301,31 @@ oneunit(::Type{<:AbstractIrrational}) = true
         @test promote(-ONE, ZERO) === (-1, 0)
         @test promote(-ONE,  ONE) === (-1, 1)
         @test promote(-ONE, -ONE) === (-ONE, -ONE)
+
+        @testset "Neutrals.type_common($T)" for T in (Int8, UInt8, Int16, UInt16,
+                                                      Int32, UInt32, Int64, UInt64,
+                                                      Int128, UInt128, BigInt,
+                                                      Float16, Float32, Float64, BigFloat,
+                                                      typeof(pi),
+                                                      Rational{UInt8}, Rational{Int},
+                                                      Complex{Float32}, Complex{Rational{Int16}},
+                                                      Complex{Rational{UInt32}})
+            S = T <: AbstractIrrational ? Float64 :
+                T <: Union{BigInt,BigFloat} ? Clong : storage_type(T)
+            @test Neutrals.type_common(T) === S
+        end
+        @testset "Neutrals.type_signed($T)" for T in (Int8, UInt8, Int16, UInt16,
+                                                      Int32, UInt32, Int64, UInt64,
+                                                      Int128, UInt128, BigInt,
+                                                      Float16, Float32, Float64, BigFloat,
+                                                      typeof(pi),
+                                                      Rational{UInt8}, Rational{Int},
+                                                      Complex{Float32}, Complex{Rational{Int16}},
+                                                      Complex{Rational{UInt32}})
+            S = T <: AbstractIrrational ? Float64 : storage_type(T)
+            S = S <: Unsigned ? signed(S) : S
+            @test Neutrals.type_signed(T) === S
+        end
     end
 
     @testset "Binary operations between $x and $y" for x in instances(Neutral), y in instances(Neutral)
@@ -326,7 +365,7 @@ oneunit(::Type{<:AbstractIrrational}) = true
         end
     end
 
-    @testset "Binary operations with $x" for x in others
+    @testset "Arithmetic operations with $x" for x in others
         # Addition and subtraction with ZERO, the neutral element for the addition of
         # numbers.
         @test ZERO + x === x
@@ -384,7 +423,131 @@ oneunit(::Type{<:AbstractIrrational}) = true
         @test x^ONE === x
         @test isequal(x^(-ONE), inv(x))
 
-        # Comparisons.
+        # div, rem, mod.
+        if x isa Real
+            # Division by 𝟘 throws.
+            @test_throws DivideError div(x, ZERO)
+            @test_throws DivideError rem(x, ZERO)
+            @test_throws DivideError mod(x, ZERO)
+
+            # Division of unsigned rationals by -𝟙 (and conversely) is not possible.
+            if x isa UnsignedRational
+                @test_throws InexactError div(x, -ONE)
+                @test_throws InexactError rem(x, -ONE)
+                @test_throws InexactError mod(x, -ONE)
+                @test_throws InexactError div(-ONE, x)
+                @test_throws InexactError rem(-ONE, x)
+                @test_throws InexactError mod(-ONE, x)
+            end
+
+            # Test division of x by ±𝟙.
+            if x isa Bool
+                nothing
+            else
+                S = signed_type(typeof(x))
+                # Test division of x by 𝟙.
+                let y = div(x, one(S))
+                    if x isa Integer
+                        @test y == x # test assumption
+                        @test typeof(y) == typeof(x) # result of `div` has signedness of 1st operand
+                        @test div(x, ONE) === x # must leave x unchanged
+                    else
+                        @test isequal(div(x, ONE), y)
+                    end
+                    @test typeof(div(x, ONE)) == typeof(y)
+                end
+                let y = rem(x, one(S))
+                    if x isa Integer
+                        @test iszero(y) # test assumption
+                        @test typeof(y) == typeof(x) # result of `rem` has signedness of 1st operand
+                    end
+                    @test isequal(rem(x, ONE), y)
+                    @test typeof(rem(x, ONE)) == typeof(y)
+                end
+                let y = mod(x, one(S))
+                    if x isa Integer
+                        @test iszero(y) # test assumption
+                        @test typeof(y) == S # result of `mod` has signedness of 2nd operand
+                    end
+                    @test isequal(mod(x, ONE), y)
+                    @test typeof(mod(x, ONE)) == typeof(y)
+                end
+                # Test division of x by -𝟙.
+                if !(x isa UnsignedRational)
+                    let y = div(x, -one(S))
+                        @test isequal(div(x, -ONE), y)
+                        @test typeof(div(x, -ONE)) == typeof(y)
+                    end
+                    let y = rem(x, -one(S))
+                        @test isequal(rem(x, -ONE), y)
+                        @test typeof(rem(x, -ONE)) == typeof(y)
+                    end
+                    let y = mod(x, -one(S))
+                        @test isequal(mod(x, -ONE), y)
+                        @test typeof(mod(x, -ONE)) == typeof(y)
+                    end
+                end
+                # Test division of 𝟘, 𝟙, and -𝟙 by x.
+                if iszero(x) && x isa Union{Integer,Rational}
+                    @test_throws DivideError div(ZERO, x)
+                    @test_throws DivideError rem(ZERO, x)
+                    @test_throws DivideError mod(ZERO, x)
+                    @test_throws DivideError div( ONE, x)
+                    @test_throws DivideError rem( ONE, x)
+                    @test_throws DivideError mod( ONE, x)
+                    if !(x isa UnsignedRational)
+                        @test_throws DivideError div(-ONE, x)
+                        @test_throws DivideError rem(-ONE, x)
+                        @test_throws DivideError mod(-ONE, x)
+                    end
+                else # division by x is possible
+                    # Test division of 𝟘 by x.
+                    let y = div(zero(S), x)
+                        @test isequal(div(ZERO, x), y)
+                        @test typeof(div(ZERO, x)) == typeof(y)
+                    end
+                    let y = rem(zero(S), x)
+                        @test isequal(rem(ZERO, x), y)
+                        @test typeof(rem(ZERO, x)) == typeof(y)
+                    end
+                    let y = mod(zero(S), x)
+                        @test isequal(mod(ZERO, x), y)
+                        @test typeof(mod(ZERO, x)) == typeof(y)
+                    end
+                    # Test division of 𝟙 by x.
+                    let y = div(one(S), x)
+                        @test isequal(div(ONE, x), y)
+                        @test typeof(div(ONE, x)) == typeof(y)
+                    end
+                    let y = rem(one(S), x)
+                        @test isequal(rem(ONE, x), y)
+                        @test typeof(rem(ONE, x)) == typeof(y)
+                    end
+                    let y = mod(one(S), x)
+                        @test isequal(mod(ONE, x), y)
+                        @test typeof(mod(ONE, x)) == typeof(y)
+                    end
+                    if !(x isa UnsignedRational)
+                        # Test division of -𝟙 by x.
+                        let y = div(-one(S), x)
+                            @test isequal(div(-ONE, x), y)
+                            @test typeof(div(-ONE, x)) == typeof(y)
+                        end
+                        let y = rem(-one(S), x)
+                            @test isequal(rem(-ONE, x), y)
+                            @test typeof(rem(-ONE, x)) == typeof(y)
+                        end
+                        let y = mod(-one(S), x)
+                            @test isequal(mod(-ONE, x), y)
+                            @test typeof(mod(-ONE, x)) == typeof(y)
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    @testset "Comparisons with $x" for x in others
         let z = zero(one(x)) # dimensionless zero of same type as x
             @test (x == ZERO) == (x == z)
             @test (ZERO == x) == (z == x)
