@@ -677,6 +677,8 @@ end
 
     @testset "Operation with Unitful quantities" begin
         x = 3kg
+        @test Neutrals.is_dimensionless(x) == false
+        @test Neutrals.is_dimensionless(x/g) == true
         @test_throws Exception x + ZERO
         @test_throws Exception x + ONE
         @test_throws Exception x + (-ONE)
@@ -694,11 +696,14 @@ end
         @test ONE*unit(x) + x === x + oneunit(x)
         @test x - ONE*unit(x) === x - oneunit(x)
         @test ONE*unit(x) - x === oneunit(x) - x
+        @test ZERO*x == zero(x)
+        @test ZERO*x === ZERO*unit(x)
         @test ZERO/x == zero(inv(x))
+        @test ZERO/x === ZERO/unit(x)
         @test ONE/x == inv(x)
         @test -ONE/x == -inv(x)
         @test_throws DivideError x/ZERO
-        @test x/ONE == x
+        @test x/ONE === x
         @test x/-ONE == -x
     end
 end
