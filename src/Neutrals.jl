@@ -220,11 +220,6 @@ end
 (::Type{Complex})(x::Neutral) = Complex(value(x), 0)
 (::Type{AbstractFloat})(x::Neutral) = float(value(x))
 (::Type{T})(x::Neutral) where {T<:AbstractIrrational} = throw(InexactError(:convert, T, x))
-(::Type{T})(x::Neutral) where {T<:BareNumber} =
-    is_dimensionless(T) ? T(value(x)) : throw_convert_neutral_to_dimensionful_type(T, x)
-
-@noinline throw_convert_neutral_to_dimensionful_type(::Type{T}, x::Neutral) where {T} =
-    throw(ArgumentError("cannot convert $x to dimensionful type $T"))
 
 #---------------------------------------------------------------------- UNARY OPERATIONS -
 
