@@ -4,7 +4,7 @@ This page describes the most important changes in `Neutrals`. The format is base
 a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic
 Versioning](https://semver.org/spec).
 
-## Unreleased
+## Version 0.2.0 (2025/05/21)
 
 ### Fixed
 
@@ -17,11 +17,6 @@ Versioning](https://semver.org/spec).
 
 - Improve documentation.
 
-### Added
-
-- Extend addition and subtraction with neutrals to `Number`.
-
 ### Changed
 
-- Extending `Neutral.impl_conv` is easier: it is sufficient to extend this method for a
-  foreign numeric type and just `Neutral`, not for each instance of `Neutral`.
+- Extend addition and subtraction with neutrals to `Number`.
