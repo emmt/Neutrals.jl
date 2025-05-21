@@ -321,14 +321,20 @@ See also [`Neutrals.type_common`](@ref), [`Neutrals.impl_tdv`](@ref),
 """
 type_signed(x::Number) = type_signed(typeof(x))
 type_signed(::Type{T}) where {T<:Number} = _type_signed(bare_type(T))
+
+# NOTE For `div`, `rem`, and `mod` with a big number, the other operand is promoted to a
+#      big number. Thus, the rule for `Real` is also suitable for big numbers.
 _type_signed(::Type{T}) where {T<:Real} = T
 _type_signed(::Type{T}) where {T<:AbstractIrrational} = Float64
 _type_signed(::Type{Rational{T}}) where {T} = _type_signed(T)
 _type_signed(::Type{Complex{T}}) where {T} = _type_signed(T)
 _type_signed(::Type{T}) where {T<:Signed} = T
-_type_signed(::Type{T}) where {T<:Unsigned} = signed(T)
-# NOTE For `div`, `rem`, and `mod` with a big number, the other operand is promoted to a
-#      big number. Thus, the above rule for `Real` is suitable.
+
+# NOTE Not all versions of Julia implement `signed(T)`.
+for (U, S) in (:UInt8 => :Int8, :UInt16 => :Int16, :UInt32 => :Int32,
+               :UInt64 => :Int64, :UInt128 => :Int128)
+    @eval _type_signed(::Type{$U}) = $S
+end
 
 # Extend `Base.promote_rule` when one of the argument is a neutral number. For two neutral
 # numbers, the default is to convert them to `Int`. For `Bool`, the symmetric promote rule

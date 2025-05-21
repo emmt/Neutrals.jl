@@ -56,9 +56,13 @@ storage_type(::Type{Complex{T}}) where {T} = storage_type(T)
 storage_type(::Type{Rational{T}}) where {T} = T
 
 signed_type(::Type{T}) where {T<:Real} = T
-signed_type(::Type{T}) where {T<:Unsigned} = signed(T)
 signed_type(::Type{Complex{T}}) where {T} = Complex{signed_type(T)}
 signed_type(::Type{Rational{T}}) where {T} = Rational{signed_type(T)}
+# NOTE Not all versions of Julia implement `signed(T)`.
+for (U, S) in (:UInt8 => :Int8, :UInt16 => :Int16, :UInt32 => :Int32,
+               :UInt64 => :Int64, :UInt128 => :Int128)
+    @eval signed_type(::Type{$U}) = $S
+end
 
 @testset "Neutrals.jl" begin
     types = (Integer,
@@ -323,7 +327,7 @@ signed_type(::Type{Rational{T}}) where {T} = Rational{signed_type(T)}
                                                       Complex{Float32}, Complex{Rational{Int16}},
                                                       Complex{Rational{UInt32}})
             S = T <: AbstractIrrational ? Float64 : storage_type(T)
-            S = S <: Unsigned ? signed(S) : S
+            S = S <: Unsigned ? signed_type(S) : S
             @test Neutrals.type_signed(T) === S
         end
     end
