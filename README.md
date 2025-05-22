@@ -212,19 +212,25 @@ The method `convert(T, n)` with `T` a numeric type and `n` a neutral number amou
 calling `T(n)`. As a result, a neutral number `n` is automatically converted to a value of
 type `T` when stored in an array whose elements are of type `T` or when assigned to a
 field of type `T` in a mutable structure. For example, assuming `x` is an array of
-numbers, then:
-
-``` julia
-for i in eachindex(x); x[i] = 𝟘; end
-```
-
-is the same as:
+numbers, it can be zero-filled by:
 
 ``` julia
 for i in eachindex(x); x[i] = zero(eltype(x)); end
 ```
 
-provided `eltype(x)` is dimensionless.
+which, provided `eltype(x)` is dimensionless, can be written as:
+
+``` julia
+for i in eachindex(x); x[i] = 𝟘; end
+```
+
+or, better, as:
+
+``` julia
+for i in eachindex(x); x[i] *= 𝟘; end
+```
+
+which works whether `eltype(x)` is dimensionful or dimensionless.
 
 
 ## Working with dimensionful quantities
@@ -266,9 +272,10 @@ unit of `x`.
 
 - [`Zeros`](https://github.com/perrutquist/Zeros.jl) provides `Zero()` and `One()` which
   are also strong neutral elements for addition and multiplication with numbers. `Zero()`
-  and `One()` are similar to `𝟘` or `ZERO`, and `𝟙` or `ONE`. However, `-One()` yields `-1`
-  which is not a singleton, division by `One()` converts the other operand to floating-point,
-  multiplication of a dimensionful number and `Zero()` is not supported, etc..
+  and `One()` are similar to `𝟘` or `ZERO`, and `𝟙` or `ONE`. However, `-One()` yields
+  `-1` which is not a singleton, division by `One()` converts the other operand to
+  floating-point, multiplication of a dimensionful number and `Zero()` is not supported,
+  etc.
 
 - [`StaticNumbers`](https://github.com/perrutquist/StaticNumbers.jl) is a generalization
   of `Zeros` to other any numeric values, not just `0` and `1`.
