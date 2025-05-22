@@ -83,6 +83,7 @@ end
               0.0f0, 1.0f0, -1.0f0, 2.0f0, Inf32, -Inf32, NaN32,
               0.0, 1.0, -1.0, 0.4, Inf, -Inf, NaN, -NaN,
               π,
+              0 + 0im, 1.0 - 2.0im, complex(-1//1, 3//1), #= FIXME complex(pi, pi), =#
               BigInt(0), BigInt(1), BigInt(-1), BigInt(3),
               BigFloat(0), BigFloat(1), BigFloat(-1), BigFloat(3))
     numbers = (instances(Neutral)..., others...)
@@ -574,35 +575,41 @@ end
             @test (ZERO == x) == (z == x)
             @test isequal(x, ZERO) == isequal(x, z)
             @test isequal(ZERO, x) == isequal(z, x)
-            @test (x < ZERO) == (x < z)
-            @test (x ≤ ZERO) == (x ≤ z)
-            @test (x > ZERO) == (x > z)
-            @test (x ≥ ZERO) == (x ≥ z)
-            @test cmp(x, ZERO) == cmp(x, z)
-            @test cmp(ZERO, x) == cmp(z, x)
+            if !(x isa Complex)
+                @test (x < ZERO) == (x < z)
+                @test (x ≤ ZERO) == (x ≤ z)
+                @test (x > ZERO) == (x > z)
+                @test (x ≥ ZERO) == (x ≥ z)
+                @test cmp(x, ZERO) == cmp(x, z)
+                @test cmp(ZERO, x) == cmp(z, x)
+            end
         end
         #
         @test (x == ONE) == (x == one(x))
         @test (ONE == x) == (one(x) == x)
         @test isequal(x, ONE) == isequal(x, one(x))
         @test isequal(ONE, x) == isequal(one(x), x)
-        @test (x < ONE) == (x < one(x))
-        @test (x ≤ ONE) == (x ≤ one(x))
-        @test (x > ONE) == (x > one(x))
-        @test (x ≥ ONE) == (x ≥ one(x))
-        @test cmp(x, ONE) == cmp(x, one(x))
-        @test cmp(ONE, x) == cmp(one(x), x)
+        if !(x isa Complex)
+            @test (x < ONE) == (x < one(x))
+            @test (x ≤ ONE) == (x ≤ one(x))
+            @test (x > ONE) == (x > one(x))
+            @test (x ≥ ONE) == (x ≥ one(x))
+            @test cmp(x, ONE) == cmp(x, one(x))
+            @test cmp(ONE, x) == cmp(one(x), x)
+        end
         #
         @test (x == -ONE) == (is_signed(x) && x == -one(x))
         @test (-ONE == x) == (is_signed(x) && -one(x) == x)
         @test isequal(x, -ONE) == (is_signed(x) && isequal(x, -one(x)))
         @test isequal(-ONE, x) == (is_signed(x) && isequal(-one(x), x))
-        @test (x < -ONE) == (is_signed(x) && x < -one(x))
-        @test (x ≤ -ONE) == (is_signed(x) && x ≤ -one(x))
-        @test (x > -ONE) == (!is_signed(x) || x > -one(x))
-        @test (x ≥ -ONE) == (!is_signed(x) || x ≥ -one(x))
-        @test cmp(x, -ONE) == (is_signed(x) ? cmp(x, -one(x)) : 1)
-        @test cmp(-ONE, x) == (is_signed(x) ? cmp(-one(x), x) : -1)
+        if !(x isa Complex)
+            @test (x < -ONE) == (is_signed(x) && x < -one(x))
+            @test (x ≤ -ONE) == (is_signed(x) && x ≤ -one(x))
+            @test (x > -ONE) == (!is_signed(x) || x > -one(x))
+            @test (x ≥ -ONE) == (!is_signed(x) || x ≥ -one(x))
+            @test cmp(x, -ONE) == (is_signed(x) ? cmp(x, -one(x)) : 1)
+            @test cmp(-ONE, x) == (is_signed(x) ? cmp(-one(x), x) : -1)
+        end
     end
 
     @testset "Arithmetic with custom types" begin
