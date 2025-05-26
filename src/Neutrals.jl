@@ -516,9 +516,6 @@ impl_sub(::Neutral{ 0}, x::BareNumber) = -x
 impl_sub(::Neutral{ 0}, x::Number) = is_dimensionless(x) ? -x : throw_sub_dimensionful_and_zero()
 impl_sub(::Neutral{ 1}, x::Number) = convert(type_common(x), 1) - x
 impl_sub(::Neutral{-1}, x::Number) = -convert(type_common(x), 1) - x
-# NOTE The rationale to have `type_signed` above is that `-𝟙` is not representable
-#      otherwise and, for all integers but notably the unsigned ones,
-#      `-one(signed(typeof(x))) - x` yield the same result as the above expression.
 
 @noinline throw_sub_dimensionful_and_zero() =
     throw(ArgumentError("𝟘 and dimensionful quantity cannot be subtracted"))
@@ -898,6 +895,62 @@ for T in (:BigInt, :BigFloat)
         impl_eq(x::$T, y::Neutral{-1}) = x == Clong(-1)
     end
 end
+
+#-------------------------------------------------------------------------- BROADCASTING -
+#
+# For broadcasted operations like `x .+ 𝟙` the existing rules yield a result which is
+# stored into a new array and which is as fast to compute as would a specialized method.
+# We specialize the few broadcasted operations, like `x .+ 𝟘` that could yield `x` unchanged
+# or a result like `x .* 𝟘` to yield an array of `𝟘`s without computations.
+
+# Union of type of operands supporting the optimization of broadcasting rules.
+const Operand{T<:Number} = Union{T,AbstractArray{<:T}}
+
+for (op, n, T) in ((:+, 0, Number), (:|, 0, Integer), (:&, -1, Integer), (:xor, 0, Integer))
+    @eval begin
+        Base.broadcasted(::typeof($op), x::Neutral{$n},  ::Neutral{$n}) = x
+        Base.broadcasted(::typeof($op), x::Operand{$T},  ::Neutral{$n}) = x
+        Base.broadcasted(::typeof($op),  ::Neutral{$n}, x::Operand{$T}) = x
+    end
+end
+
+# This one is special.
+Base.broadcasted(::typeof(&), ::Neutral{1}, x::Operand{Bool}) = x
+Base.broadcasted(::typeof(&), x::Operand{Bool}, ::Neutral{1}) = x
+
+Base.broadcasted(::typeof(-), x::Operand{Number}, ::Neutral{0}) = x
+
+Base.broadcasted(::typeof(*), x::Neutral,         y::Neutral        ) = impl_mul(x, y)
+Base.broadcasted(::typeof(*), x::Operand{Number}, y::Neutral        ) = bcast_mul(y, x) # put neutral number 1st
+Base.broadcasted(::typeof(*), x::Neutral,         y::Operand{Number}) = bcast_mul(x, y)
+
+Base.broadcasted(::typeof(/), x::Neutral,         y::Neutral        ) = impl_div(x, y)
+Base.broadcasted(::typeof(/), x::Operand{Number}, y::Neutral        ) = bcast_div(x, y)
+Base.broadcasted(::typeof(/), x::Neutral,         y::Operand{Number}) = bcast_div(x, y)
+
+Base.broadcasted(::typeof(^), x::Operand{Number}, ::Neutral{1}) = x
+
+Base.broadcasted(::typeof(div), x::Operand{Integer}, ::Neutral{1}) = x
+
+Base.broadcasted(::typeof(<<),  x::Operand{Integer}, ::Neutral{0}) = x
+Base.broadcasted(::typeof(>>),  x::Operand{Integer}, ::Neutral{0}) = x
+Base.broadcasted(::typeof(>>>), x::Operand{Integer}, ::Neutral{0}) = x
+
+# Auxiliary function for `.*`.
+bcast_mul(x, y) = impl_mul(x, y)
+bcast_mul(::Neutral{ 0}, x::AbstractArray{<:Number}) = similar(x, Neutral{0})
+bcast_mul(::Neutral{ 1}, x::AbstractArray{<:Number}) = x
+bcast_mul(::Neutral{-1}, x::AbstractArray{<:Number}) = -x
+
+# Auxiliary function for `./`.
+bcast_div(x, y) = impl_div(x, y)
+bcast_div(::Neutral{ 0}, x::AbstractArray{<:Number}) = similar(x, Neutral{0})
+bcast_div(::Neutral{ 1}, x::AbstractArray{<:Number}) = impl_inv.(x)
+bcast_div(::Neutral{-1}, x::AbstractArray{<:Number}) = -impl_inv.(x)
+#
+bcast_div(x::AbstractArray{<:Number}, ::Neutral{ 0}) = throw(DivideError())
+bcast_div(x::AbstractArray{<:Number}, ::Neutral{ 1}) = x
+bcast_div(x::AbstractArray{<:Number}, ::Neutral{-1}) = -x
 
 #------------------------------------------------------------------------ INITIALIZATION -
 

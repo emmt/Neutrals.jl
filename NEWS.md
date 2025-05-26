@@ -5,6 +5,15 @@ a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to 
 Versioning](https://semver.org/spec).
 
 
+## Unreleased
+
+### Changed
+
+- Broadcasted operations involving a neutral number and a number or an array of numbers `x`
+  have been extended to yield `x` unchanged if possible and as an optimization. Other
+  broadcasted operations should yield the same result as before.
+
+
 ## Version 0.2.2 (2025/05/26)
 
 ### Fixed

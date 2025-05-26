@@ -233,6 +233,34 @@ for i in eachindex(x); x[i] *= 𝟘; end
 which works whether `eltype(x)` is dimensionful or dimensionless.
 
 
+## Broadcasting
+
+Some broadcasted operations involving a neutral number and a number or an array of numbers
+`x` are optimized to return `x` unchanged:
+
+``` julia
+x .+ 𝟘 -> x # idem for 𝟘 .+ x -> x
+x .- 𝟘 -> x
+𝟙 .* x -> x # idem for x .* 𝟙
+x ./ 𝟙 -> x
+x .^ 𝟙 -> x
+```
+
+In addition, if `x` has integer element type, then:
+
+``` julia
+x .÷ 𝟙    -> x
+x .| 𝟘    -> x # idem for 𝟘 .| x
+x .& (-𝟙) -> x # idem for (-𝟙) .& x
+x .⊻ 𝟘    -> x # idem for 𝟘 .⊻ x -> x
+x .<< 𝟘   -> x
+x .>> 𝟘   -> x
+x .>>> 𝟘  -> x
+```
+
+Other broadcasted operations should work as can be inferred from the rules for numbers.
+
+
 ## Working with dimensionful quantities
 
 Neutral numbers can work with dimensionful numbers provided the `Neutrals` package be

@@ -705,42 +705,83 @@ end
         @test typeof(x >>> n) === T
     end
 
-    @testset "Broadcasted operations" begin
-        x = rand(Float32, 3, 4)
-        x[iszero.(x)] .= zero(eltype(x))
-        z = fill!(similar(x), zero(eltype(x)))
-        u = fill!(similar(x), oneunit(eltype(x)))
-        r = inv.(x)
+    @testset "Broadcasted operations between neutral numbers " for x in instances(Neutral), y in instances(Neutral)
+        @test x .+ y === x + y
+        @test x .- y === x - y
+        @test x .* y === x * y
+        if iszero(y)
+            @test_throws DivideError x ./ y
+            @test_throws DivideError x .÷ y
+        else
+            @test x ./ y === x / y
+            @test x .÷ y === x ÷ y
+        end
+        @test x .^ y === x ^ y
+        @test x .| y === x | y
+        @test x .& y === x & y
+        @test x .⊻ y === x ⊻ y
+        @test x .<< y === x << y
+    end
 
-        @test x .+ ZERO == x
-        @test ZERO .+ x == x
-        @test x .- ZERO == x
-        @test ZERO .- x == -x
-        @test x .* ZERO == z
-        @test ZERO .* x == z
-        @test_throws DivideError x ./ ZERO
-        @test ZERO ./ x == z
-        @test x.^ZERO == u
+    @testset "Broadcasted operations with T=$T" for T in (Bool, Int16, Float32)
+        for x in (zero(T), oneunit(T), rand(T, 3, 4),)
+            if x isa AbstractArray
+                z = similar(x, typeof(ZERO))
+                u = fill!(similar(x), oneunit(eltype(x)))
+                r = inv.(x)
+            else
+                z = ZERO
+                u = oneunit(x)
+                r = inv(x)
+            end
 
-        @test x .+ ONE == x .+ one(eltype(x))
-        @test ONE .+ x == x .+ one(eltype(x))
-        @test x .- ONE == x .- one(eltype(x))
-        @test ONE .- x == one(eltype(x)) .- x
-        @test x .* ONE == x
-        @test ONE .* x == x
-        @test x ./ ONE == x
-        @test ONE ./ x == r
-        @test x.^ONE == x
+            @test x .+ ZERO === x
+            @test ZERO .+ x === x
+            @test x .- ZERO === x
+            @test ZERO .- x ≗ -x
+            @test x .* ZERO ≗ z
+            @test ZERO .* x ≗ z
+            @test_throws DivideError x ./ ZERO
+            @test ZERO ./ x ≗ z
+            @test x.^ZERO ≗ u
 
-        @test x .+ (-ONE) == x .- one(eltype(x))
-        @test (-ONE) .+ x == x .- one(eltype(x))
-        @test x .- (-ONE) == x .+ one(eltype(x))
-        @test (-ONE) .- x == (-one(eltype(x))) .- x
-        @test x .* (-ONE) == -x
-        @test (-ONE) .* x == -x
-        @test x ./ (-ONE) == -x
-        @test (-ONE) ./ x == -r
-        @test x.^(-ONE) == r
+            @test x .+ ONE ≗ x .+ one(eltype(x))
+            @test ONE .+ x ≗ x .+ one(eltype(x))
+            @test x .- ONE ≗ x .- one(eltype(x))
+            @test ONE .- x ≗ one(eltype(x)) .- x
+            @test x .* ONE === x
+            @test ONE .* x === x
+            @test x ./ ONE === x
+            @test ONE ./ x ≗ r
+            @test x.^ONE === x
+
+            @test x .+ (-ONE) ≗ x .- one(eltype(x))
+            @test (-ONE) .+ x ≗ x .- one(eltype(x))
+            @test x .- (-ONE) ≗ x .+ one(eltype(x))
+            @test (-ONE) .- x ≗ (-one(eltype(x))) .- x
+            @test x .* (-ONE) ≗ -x
+            @test (-ONE) .* x ≗ -x
+            @test x ./ (-ONE) ≗ -x
+            @test (-ONE) ./ x ≗ -r
+            @test x.^(-ONE) ≗ r
+
+            if T <: Integer
+                @test x .÷ ONE === x
+                @test x .| ZERO === x
+                @test ZERO .| x === x
+                if T == Bool
+                    @test x .& ONE === x
+                    @test ONE .& x === x
+                end
+                @test x .& (-ONE) === x
+                @test (-ONE) .& x === x
+                @test x .⊻ ZERO === x
+                @test ZERO .⊻ x === x
+                @test x .<< ZERO === x
+                @test x .>> ZERO === x
+                @test x .>>> ZERO === x
+            end
+        end
     end
 
     @testset "Operation with Unitful quantities" begin
