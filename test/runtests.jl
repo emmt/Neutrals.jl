@@ -724,6 +724,44 @@ end
         @test typeof(x >>> n) === T
     end
 
+    @testset "Broadcasted operations" begin
+        x = rand(Float32, 3, 4)
+        x[iszero.(x)] .= zero(eltype(x))
+        z = fill!(similar(x), zero(eltype(x)))
+        u = fill!(similar(x), oneunit(eltype(x)))
+        r = inv.(x)
+
+        @test x .+ ZERO == x
+        @test ZERO .+ x == x
+        @test x .- ZERO == x
+        @test ZERO .- x == -x
+        @test x .* ZERO == z
+        @test ZERO .* x == z
+        @test_throws DivideError x ./ ZERO
+        @test ZERO ./ x == z
+        @test x.^ZERO == u
+
+        @test x .+ ONE == x .+ one(eltype(x))
+        @test ONE .+ x == x .+ one(eltype(x))
+        @test x .- ONE == x .- one(eltype(x))
+        @test ONE .- x == one(eltype(x)) .- x
+        @test x .* ONE == x
+        @test ONE .* x == x
+        @test x ./ ONE == x
+        @test ONE ./ x == r
+        @test x.^ONE == x
+
+        @test x .+ (-ONE) == x .- one(eltype(x))
+        @test (-ONE) .+ x == x .- one(eltype(x))
+        @test x .- (-ONE) == x .+ one(eltype(x))
+        @test (-ONE) .- x == (-one(eltype(x))) .- x
+        @test x .* (-ONE) == -x
+        @test (-ONE) .* x == -x
+        @test x ./ (-ONE) == -x
+        @test (-ONE) ./ x == -r
+        @test x.^(-ONE) == r
+    end
+
     @testset "Operation with Unitful quantities" begin
         x = 3kg
         @test Neutrals.is_dimensionless(x) == false
