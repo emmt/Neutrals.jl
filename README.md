@@ -132,6 +132,11 @@ i & -𝟙 -> i
 i ⊻  𝟘 -> i
 ```
 
+It may be noted that, `i & 𝟘` yields `zero(i)` and not `𝟘` as would do `i*𝟘`. This is
+because `𝟘` is defined relatively to the addition and the multiplication (`+` and `*`),
+not the *bitwise-and* operation (`&`).
+
+
 ## Bit-shift operations
 
 In Julia, bit-shifting integer `x` by `n` bits yields a result of the same type as `x`

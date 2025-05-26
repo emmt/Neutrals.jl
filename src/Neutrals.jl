@@ -764,7 +764,7 @@ a neutral number.
 impl_or(x::Neutral, y::Integer) = impl_or(y, x) # put neutral neutral second
 impl_or(x::Integer, ::Neutral{0}) = x
 impl_or(x::Integer, ::Neutral{1}) = x | one(x)
-impl_or(x::Integer, ::Neutral{-1}) = ~zero(x)
+impl_or(x::Integer, ::Neutral{-1}) = ~zero(x) # NOTE see remark for `x & 𝟘`
 
 # Optimize for Booleans.
 impl_or(x::Bool, ::Neutral{1}) = true
@@ -779,7 +779,7 @@ a neutral number.
 
 """
 impl_and(x::Neutral, y::Integer) = impl_and(y, x) # operation is commutative
-impl_and(x::Integer, ::Neutral{0}) = zero(x)
+impl_and(x::Integer, ::Neutral{0}) = zero(x) # NOTE not 𝟘, because 𝟘 is defined according to + and *, not &
 impl_and(x::Integer, ::Neutral{1}) = x & one(x)
 impl_and(x::Integer, ::Neutral{-1}) = x
 
