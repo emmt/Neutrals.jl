@@ -514,8 +514,8 @@ impl_sub(x::Number, ::Neutral{-1}) = x + convert(type_common(x), 1)
 
 impl_sub(::Neutral{ 0}, x::BareNumber) = -x
 impl_sub(::Neutral{ 0}, x::Number) = is_dimensionless(x) ? -x : throw_sub_dimensionful_and_zero()
-impl_sub(::Neutral{ 1}, x::Number) = convert(type_common(x),  1) - x
-impl_sub(::Neutral{-1}, x::Number) = convert(type_signed(x), -1) - x
+impl_sub(::Neutral{ 1}, x::Number) = convert(type_common(x), 1) - x
+impl_sub(::Neutral{-1}, x::Number) = -convert(type_common(x), 1) - x
 # NOTE The rationale to have `type_signed` above is that `-𝟙` is not representable
 #      otherwise and, for all integers but notably the unsigned ones,
 #      `-one(signed(typeof(x))) - x` yield the same result as the above expression.
@@ -661,8 +661,11 @@ number.
 """
 impl_eq(x::Neutral, y::Number) = impl_eq(y, x) # put neutral number second
 impl_eq(x::Number, ::Neutral{ 0}) = is_dimensionless(x) && iszero(x)
-impl_eq(x::Number, ::Neutral{ 1}) = isone(x) # NOTE faster than `x == convert(type_common(x), 1)`?
-impl_eq(x::Number, ::Neutral{-1}) = x == convert(type_common(x), -1)
+impl_eq(x::Number, ::Neutral{ 1}) = isone(x)
+impl_eq(x::Number, ::Neutral{-1}) = x == -convert(type_common(x), 1)
+ # NOTE We are assuming that `isone(x)` is not slower than `x == one(x)` or `x ==
+ #      convert(type_common(x), 1)`. We assume that `x == -𝟙` is specialized to yield
+ #      `false` for unsigned numbers (see below).
 
 # Optimize comparison of an unsigned real and a neutral number.
 impl_eq(x::UnsignedNumber, y::Neutral{-1}) = false

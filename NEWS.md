@@ -11,6 +11,13 @@ Versioning](https://semver.org/spec).
 
 - Binary operations between a `Complex{Bool}` and a neutral number behave as documented.
 
+- `-𝟙` behaves as documented in additions, subtractions, and comparisons: in these
+  situations the result is as if `-𝟙` be replaced by `-one(x)` where `x` is the other
+  operand. The result the operation is however computed after simplification of the
+  resulting expression. For example, expression `x - (-𝟙)` becomes `x - (-one(x))` which
+  is simplified in `x + one(x)` (as before) but expression `(-𝟙) - x` is equivalent to
+  `-one(x) - x` (after this fix).
+
 
 ## Version 0.2.1 (2025/05/22)
 
