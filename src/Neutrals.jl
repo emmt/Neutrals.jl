@@ -375,15 +375,15 @@ Base.promote_rule(::Type{Neutral{-1}}, ::Type{Bool}) = Int
 #
 # Override base methods to call corresponding implementation:
 for (f, (g, w, Ts)) in (:(+)   => (:impl_add,    3, (:Number, :Real, :Integer, :Rational,
-                                                     :Complex, :AbstractIrrational,
+                                                     :Complex, :(Complex{Bool}), :AbstractIrrational,
                                                      :AbstractFloat, :BigInt, :BigFloat)),
-                        :(-)   => (:impl_sub,    3, (:Number, :Real, :Integer, :Rational,
+                        :(-)   => (:impl_sub,    3, (:Number, :(Complex{Bool}), :Real, :Integer, :Rational,
                                                      :Complex, :AbstractIrrational,
                                                      :AbstractFloat, :BigInt, :BigFloat)),
                         :(*)   => (:impl_mul,    3, (:Number, :Real, :Integer,
-                                                     :Rational, :Complex)),
+                                                     :Rational, :Complex, :(Complex{Bool}))),
                         :(/)   => (:impl_div,    3, (:Number, :Real, :Integer, :Rational,
-                                                     :Complex)),
+                                                     :Complex, :(Complex{Bool}))),
                         :(^)   => (:impl_pow,    2, (:Number, :Real, :Integer, :Rational,
                                                      :Float16, :Float32, :Float64,
                                                      :Complex,
@@ -564,6 +564,11 @@ impl_div(::Neutral{ 0}, x::BareNumber) = ZERO
 impl_div(::Neutral{ 1}, x::Number) = impl_inv(x)
 impl_div(::Neutral{-1}, x::Number) = -impl_inv(x)
 
+# For the left division between a complex number and a neutral number, we want to avoid
+# calling the adjoint method which would convert a Complex{Bool} into a Complex{Int}).
+Base.:(\)(x::Neutral, y::Complex) = y/x
+Base.:(\)(x::Complex, y::Neutral) = y/x
+
 """
     Neutrals.impl_tdv(x, y) -> x ÷ y
 
@@ -660,7 +665,7 @@ impl_eq(x::Number, ::Neutral{ 1}) = isone(x) # NOTE faster than `x == convert(ty
 impl_eq(x::Number, ::Neutral{-1}) = x == convert(type_common(x), -1)
 
 # Optimize comparison of an unsigned real and a neutral number.
-impl_eq(x::UnsignedReal, y::Neutral{-1}) = false
+impl_eq(x::UnsignedNumber, y::Neutral{-1}) = false
 #
 impl_eq(x::Bool, y::Neutral{1}) = x
 impl_eq(x::Bool, y::Neutral{0}) = !x

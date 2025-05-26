@@ -83,7 +83,9 @@ end
               0.0f0, 1.0f0, -1.0f0, 2.0f0, Inf32, -Inf32, NaN32,
               0.0, 1.0, -1.0, 0.4, Inf, -Inf, NaN, -NaN,
               π,
-              0 + 0im, 1.0 - 2.0im, complex(-1//1, 3//1), #= FIXME complex(pi, pi), =#
+              0 + 0im, 1.0 - 2.0im, complex(-1//1, 3//1),
+              complex(false,false), complex(true,false), complex(false,true), complex(true,true),
+              #= complex(pi, pi), FIXME =#
               BigInt(0), BigInt(1), BigInt(-1), BigInt(3),
               BigFloat(0), BigFloat(1), BigFloat(-1), BigFloat(3))
     numbers = (instances(Neutral)..., others...)
@@ -567,6 +569,46 @@ end
                 end
             end
         end
+    end
+
+    # Complex{Bool} is treated specifically (see `base/complex.jl`).
+    @testset "Complex($r,$i)" for r in (true, false), i in (true,false)
+        z = Complex(r, i)
+        @test z + ZERO === z
+        @test ZERO + z === z
+        @test z - ZERO === z
+        @test ZERO - z === -z
+        @test ZERO*z === ZERO
+        @test z*ZERO === ZERO
+        @test ZERO/z === ZERO
+        @test_throws DivideError z/ZERO
+        @test z\ZERO === ZERO
+        @test_throws DivideError ZERO\z
+        @test z^ZERO === one(z)
+
+        @test z + ONE === z + true
+        @test ONE + z === z + true
+        @test z - ONE === z - true
+        @test ONE - z === true - z
+        @test ONE*z === z
+        @test z*ONE === z
+        @test ONE/z === inv(z)
+        @test z/ONE === z
+        @test z\ONE === inv(z)
+        @test ONE\z === z
+        @test z^ONE === z
+
+        @test z + (-ONE) === z - true
+        @test (-ONE) + z === z - true
+        @test z - (-ONE) === z + true
+        @test (-ONE) - z === -true - z
+        @test (-ONE)*z === -z
+        @test z*(-ONE) === -z
+        @test (-ONE)/z === -inv(z)
+        @test z/(-ONE) === -z
+        @test z\(-ONE) === -inv(z)
+        @test (-ONE)\z === -z
+        @test z^(-ONE) === inv(z)
     end
 
     @testset "Comparisons with $x" for x in others
