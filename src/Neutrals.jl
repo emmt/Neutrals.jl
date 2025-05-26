@@ -906,35 +906,42 @@ end
 # Union of type of operands supporting the optimization of broadcasting rules.
 const Operand{T<:Number} = Union{T,AbstractArray{<:T}}
 
-for (op, n, T) in ((:+, 0, Number), (:|, 0, Integer), (:&, -1, Integer), (:xor, 0, Integer))
+# Base method to extend for broadcasted operations.
+import Base.Broadcast: broadcasted
+
+# Commutative operations which can yield `x` for a specific neutral number..
+for (op, n, T) in ((:+,    0, Number),
+                   (:|,    0, Integer),
+                   (:&,   -1, Integer),
+                   (:xor,  0, Integer))
     @eval begin
-        Base.broadcasted(::typeof($op), x::Neutral{$n},  ::Neutral{$n}) = x
-        Base.broadcasted(::typeof($op), x::Operand{$T},  ::Neutral{$n}) = x
-        Base.broadcasted(::typeof($op),  ::Neutral{$n}, x::Operand{$T}) = x
+        broadcasted(::typeof($op), x::Neutral{$n}, ::Neutral{$n}) = x
+        broadcasted(::typeof($op), x::Operand{$T}, ::Neutral{$n}) = x
+        broadcasted(::typeof($op), ::Neutral{$n}, x::Operand{$T}) = x
     end
 end
 
-# This one is special.
-Base.broadcasted(::typeof(&), ::Neutral{1}, x::Operand{Bool}) = x
-Base.broadcasted(::typeof(&), x::Operand{Bool}, ::Neutral{1}) = x
+broadcasted(::typeof(-), x::Operand{Number}, ::Neutral{0}) = x
 
-Base.broadcasted(::typeof(-), x::Operand{Number}, ::Neutral{0}) = x
+broadcasted(::typeof(*), x::Neutral, y::Neutral) = impl_mul(x, y)
+broadcasted(::typeof(*), x::Operand{Number}, y::Neutral) = bcast_mul(y, x) # put neutral number 1st
+broadcasted(::typeof(*), x::Neutral, y::Operand{Number}) = bcast_mul(x, y)
 
-Base.broadcasted(::typeof(*), x::Neutral,         y::Neutral        ) = impl_mul(x, y)
-Base.broadcasted(::typeof(*), x::Operand{Number}, y::Neutral        ) = bcast_mul(y, x) # put neutral number 1st
-Base.broadcasted(::typeof(*), x::Neutral,         y::Operand{Number}) = bcast_mul(x, y)
+broadcasted(::typeof(/), x::Neutral, y::Neutral) = impl_div(x, y)
+broadcasted(::typeof(/), x::Operand{Number}, y::Neutral) = bcast_div(x, y)
+broadcasted(::typeof(/), x::Neutral, y::Operand{Number}) = bcast_div(x, y)
 
-Base.broadcasted(::typeof(/), x::Neutral,         y::Neutral        ) = impl_div(x, y)
-Base.broadcasted(::typeof(/), x::Operand{Number}, y::Neutral        ) = bcast_div(x, y)
-Base.broadcasted(::typeof(/), x::Neutral,         y::Operand{Number}) = bcast_div(x, y)
+broadcasted(::typeof(^), x::Operand{Number}, ::Neutral{1}) = x
 
-Base.broadcasted(::typeof(^), x::Operand{Number}, ::Neutral{1}) = x
+broadcasted(::typeof(div), x::Operand{Integer}, ::Neutral{1}) = x
 
-Base.broadcasted(::typeof(div), x::Operand{Integer}, ::Neutral{1}) = x
+broadcasted(::typeof(<<),  x::Operand{Integer}, ::Neutral{0}) = x
+broadcasted(::typeof(>>),  x::Operand{Integer}, ::Neutral{0}) = x
+broadcasted(::typeof(>>>), x::Operand{Integer}, ::Neutral{0}) = x
 
-Base.broadcasted(::typeof(<<),  x::Operand{Integer}, ::Neutral{0}) = x
-Base.broadcasted(::typeof(>>),  x::Operand{Integer}, ::Neutral{0}) = x
-Base.broadcasted(::typeof(>>>), x::Operand{Integer}, ::Neutral{0}) = x
+# This one is special (as usual with Booleans...).
+broadcasted(::typeof(&), ::Neutral{1}, x::Operand{Bool}) = x
+broadcasted(::typeof(&), x::Operand{Bool}, ::Neutral{1}) = x
 
 # Auxiliary function for `.*`.
 bcast_mul(x, y) = impl_mul(x, y)
