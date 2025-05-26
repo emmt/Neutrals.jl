@@ -7,13 +7,32 @@ using Unitful, Unitful.DefaultSymbols
 
 using Base: Fix1, Fix2
 
-struct LengthInMeters{T<:Real} <: Number
-    len::T
-end
-
 const UnsignedRational = Rational{<:Union{Bool,Unsigned}}
 const UnsignedReal = Union{Bool,Unsigned,UnsignedRational}
 const UnsignedComplex = Complex{<:UnsignedReal}
+
+"""
+    x ≗ y
+
+yields whether `x` and `y` have the same element types, the same axes, and the same values
+(in the sense of `isequal`). It can be seen as a shortcut for:
+
+    eltype(x) == eltype(y) && axes(x) == axes(y) && all(isequal, x, y)
+
+"""
+≗(x::Any, y::Any) = false
+≗(x::T, y::T) where {T} = isequal(x, y)
+function ≗(x::AbstractArray{T,N}, y::AbstractArray{T,N}) where {T,N}
+    axes(x) == axes(y) || return false
+    @inbounds for i in eachindex(x, y)
+        isequal(x[i], y[i]) || return false
+    end
+    return true
+end
+
+struct LengthInMeters{T<:Real} <: Number
+    len::T
+end
 
 Neutrals.is_dimensionless(::Type{<:LengthInMeters}) = false
 Base.zero(::Type{LengthInMeters{T}}) where {T} = LengthInMeters(zero(T))
@@ -485,31 +504,20 @@ end
                         @test iszero(y) # test assumption
                         @test typeof(y) == typeof(x) # result of `rem` has signedness of 1st operand
                     end
-                    @test isequal(rem(x, ONE), y)
-                    @test typeof(rem(x, ONE)) == typeof(y)
+                    @test rem(x, ONE) ≗ y
                 end
                 let y = mod(x, one(S))
                     if x isa Integer
                         @test iszero(y) # test assumption
                         @test typeof(y) == S # result of `mod` has signedness of 2nd operand
                     end
-                    @test isequal(mod(x, ONE), y)
-                    @test typeof(mod(x, ONE)) == typeof(y)
+                    @test mod(x, ONE) ≗ y
                 end
                 # Test division of x by -𝟙.
                 if !(x isa UnsignedRational)
-                    let y = div(x, -one(S))
-                        @test isequal(div(x, -ONE), y)
-                        @test typeof(div(x, -ONE)) == typeof(y)
-                    end
-                    let y = rem(x, -one(S))
-                        @test isequal(rem(x, -ONE), y)
-                        @test typeof(rem(x, -ONE)) == typeof(y)
-                    end
-                    let y = mod(x, -one(S))
-                        @test isequal(mod(x, -ONE), y)
-                        @test typeof(mod(x, -ONE)) == typeof(y)
-                    end
+                    @test div(x, -ONE) ≗ div(x, -one(S))
+                    @test rem(x, -ONE) ≗ rem(x, -one(S))
+                    @test mod(x, -ONE) ≗ mod(x, -one(S))
                 end
                 # Test division of 𝟘, 𝟙, and -𝟙 by x.
                 if iszero(x) && x isa Union{Integer,Rational}
@@ -526,45 +534,18 @@ end
                     end
                 else # division by x is possible
                     # Test division of 𝟘 by x.
-                    let y = div(zero(S), x)
-                        @test isequal(div(ZERO, x), y)
-                        @test typeof(div(ZERO, x)) == typeof(y)
-                    end
-                    let y = rem(zero(S), x)
-                        @test isequal(rem(ZERO, x), y)
-                        @test typeof(rem(ZERO, x)) == typeof(y)
-                    end
-                    let y = mod(zero(S), x)
-                        @test isequal(mod(ZERO, x), y)
-                        @test typeof(mod(ZERO, x)) == typeof(y)
-                    end
+                    @test div(ZERO, x) ≗ div(zero(S), x)
+                    @test rem(ZERO, x) ≗ rem(zero(S), x)
+                    @test mod(ZERO, x) ≗ mod(zero(S), x)
                     # Test division of 𝟙 by x.
-                    let y = div(one(S), x)
-                        @test isequal(div(ONE, x), y)
-                        @test typeof(div(ONE, x)) == typeof(y)
-                    end
-                    let y = rem(one(S), x)
-                        @test isequal(rem(ONE, x), y)
-                        @test typeof(rem(ONE, x)) == typeof(y)
-                    end
-                    let y = mod(one(S), x)
-                        @test isequal(mod(ONE, x), y)
-                        @test typeof(mod(ONE, x)) == typeof(y)
-                    end
+                    @test div(ONE, x) ≗ div(one(S), x)
+                    @test rem(ONE, x) ≗ rem(one(S), x)
+                    @test mod(ONE, x) ≗ mod(one(S), x)
                     if !(x isa UnsignedRational)
                         # Test division of -𝟙 by x.
-                        let y = div(-one(S), x)
-                            @test isequal(div(-ONE, x), y)
-                            @test typeof(div(-ONE, x)) == typeof(y)
-                        end
-                        let y = rem(-one(S), x)
-                            @test isequal(rem(-ONE, x), y)
-                            @test typeof(rem(-ONE, x)) == typeof(y)
-                        end
-                        let y = mod(-one(S), x)
-                            @test isequal(mod(-ONE, x), y)
-                            @test typeof(mod(-ONE, x)) == typeof(y)
-                        end
+                        @test div(-ONE, x) ≗ div(-one(S), x)
+                        @test rem(-ONE, x) ≗ rem(-one(S), x)
+                        @test mod(-ONE, x) ≗ mod(-one(S), x)
                     end
                 end
             end
