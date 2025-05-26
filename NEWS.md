@@ -5,15 +5,15 @@ a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to 
 Versioning](https://semver.org/spec).
 
 
-## Unreleased
+## Version 0.2.2 (2025/05/26)
 
 ### Fixed
 
 - Binary operations between a `Complex{Bool}` and a neutral number behave as documented.
 
-- `-𝟙` behaves as documented in additions, subtractions, and comparisons: in these
+- `-𝟙` behaves as documented in additions, subtractions, and comparisons. In these
   situations the result is as if `-𝟙` be replaced by `-one(x)` where `x` is the other
-  operand. The result the operation is however computed after simplification of the
+  operand. The result of the operation is however computed after simplification of the
   resulting expression. For example, expression `x - (-𝟙)` becomes `x - (-one(x))` which
   is simplified in `x + one(x)` (as before) but expression `(-𝟙) - x` is equivalent to
   `-one(x) - x` (after this fix).
