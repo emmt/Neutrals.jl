@@ -20,9 +20,16 @@ yields `-x`.
 Before version 1.3 of Julia, `𝟘` and `𝟙` cannot be used as names of constants, the aliases
 `ZERO` and `ONE` can be used instead.
 
-## Arithmetic operations
+## Binary operations
 
-### Addition
+This section describes the rules involving a neutral number and any other number. For
+[commutative operations](https://en.wikipedia.org/wiki/Commutative_property) like the
+multiplication (`*`), the addition (`+`), binary bitwise operations (`|`, `&`, and `xor`
+or `⊻`), and the comparison for equality (`==`), the same rules apply if the operand are
+exchanged.
+
+<details>
+<summary><H3>Addition</H3></summary>
 
 The following rules apply for the addition involving a neutral number and any
 dimensionless number `x`:
@@ -33,12 +40,14 @@ x + 𝟙 -> x + one(x)
 x + (-𝟙) -> x - one(x)
 ```
 
-The addition being symmetric, these rules do not depend on the order of the operands. The
-result of an addition with a neutral number has the same type as `x`, except if `x` is a
-Boolean and the neutral number is `±𝟙` which yield an `Int` (as does the addition of
+The result of an addition with a neutral number has the same type as `x`, except if `x` is
+a Boolean and the neutral number is `±𝟙` which yield an `Int` (as does the addition of
 Booleans in Julia).
 
-### Subtraction
+</details>
+
+<details>
+<summary><H3>Subtraction</H3></summary>
 
 The rules for the subtraction involving a neutral number and any dimensionless number `x`
 follow from those of the addition:
@@ -52,7 +61,10 @@ x - (-𝟙) -> x + one(x)
 (-𝟙) - x -> -one(x) - x
 ```
 
-### Multiplication
+</details>
+
+<details>
+<summary><H3>Multiplication</H3></summary>
 
 The following rules apply for the multiplication of a neutral number and a number `x`:
 
@@ -63,8 +75,7 @@ The following rules apply for the multiplication of a neutral number and a numbe
 -𝟙*x -> -x
 ```
 
-The multiplication being symmetric, these rules do not depend on the order of the
-operands. If `x` is dimensionful, the result has the same dimensions as `x`. For example:
+If `x` is dimensionful, the result has the same dimensions as `x`. For example:
 
 ``` julia
 julia> using Neutrals, Unitful.DefaultSymbols
@@ -77,7 +88,10 @@ julia> 𝟘*(3kg)
 
 ```
 
-### Division
+</details>
+
+<details>
+<summary><H3>Division</H3></summary>
 
 The rules for the division involving a neutral number and any number `x` follow from those
 of the multiplication:
@@ -92,7 +106,10 @@ x/𝟙 -> x
 x/-𝟙 -> -x
 ```
 
-### `div`, `rem`, and `mod`
+</details>
+
+<details>
+<summary><H3>`div`, `rem`, and `mod`</H3></summary>
 
 Similar rules are implemented for the quotient and remainder of the truncated division
 (`div` or `÷` and `rem` or `%`) and for the modulo (`mod`). In Julia, for `x` and `y`
@@ -105,7 +122,10 @@ number the behavior implemented in Julia for Booleans is reflected. This implies
 neutral number be converted into a `Bool`. Hence, if the neutral operand is `-𝟙`, an
 `InexactError` is thrown.
 
-## Bitwise binary operations
+</details>
+
+<details>
+<summary><H3>Bitwise binary operations</H3></summary>
 
 In binary bitwise operations `|`, `&`, and `xor` (also denoted `⊻`) between an integer `i`
 and a neutral number `n`, the implemented rules are such that the result is as if `𝟘` and
@@ -118,9 +138,6 @@ i ⋄  𝟘 -> i ⋄ zero(i)
 i ⋄  𝟙 -> i ⋄ one(i)
 i ⋄ -𝟙 -> i ⋄ ~zero(i)
 ```
-
-All bitwise binary operations are commutative; hence, their result does not depend on the
-order of the operands.
 
 These rules may be optimized in the implementation. For example:
 
@@ -136,8 +153,10 @@ It may be noted that, `i & 𝟘` yields `zero(i)` and not `𝟘` as would do `i*
 because `𝟘` is defined relatively to the addition and the multiplication (`+` and `*`),
 not the *bitwise-and* operation (`&`).
 
+</details>
 
-## Bit-shift operations
+<details>
+<summary><H3>Bit-shift operations</H3></summary>
 
 In Julia, bit-shifting integer `x` by `n` bits yields a result of the same type as `x`
 except for Booleans for which the result is an `Int`. With the `Neutrals` package, if `n`
@@ -161,7 +180,10 @@ while bit shifting `x` by `±𝟙` bit shifts `x` by one bit in the correct dire
 closely reflects the behavior implemented in `base/int.jl` except that bit-shifting by `𝟘`
 always yields the left operand  unchanged even though it is a Boolean.
 
-## Rules for comparison
+</details>
+
+<details>
+<summary><H3>Comparisons</H3></summary>
 
 When comparing values with `==`, `<`, `<=`, `isequal`, `isless`, and `cmp`, the rule of
 thumb is that the behavior shall reflect the expression. This poses no problem for `𝟘` and
@@ -193,7 +215,10 @@ cmp(u, -𝟙) -> 1
 cmp(-𝟙, u) -> -1
 ```
 
-## Rules for conversion
+</details>
+
+<details>
+<summary><H2>Conversion rules</H2></summary>
 
 As for other numbers, a neutral number `n` (`𝟘`, `𝟙`, or `-𝟙`) can be converted into a
 numeric type `T` by `T(n)` which yields a value of type `T`. This operation is always
@@ -238,7 +263,10 @@ for i in eachindex(x); x[i] *= 𝟘; end
 which works whether `eltype(x)` is dimensionful or dimensionless.
 
 
-## Broadcasting
+</details>
+
+<details>
+<summary><H2>Broadcasting rules</H2></summary>
 
 Some broadcasted operations involving a neutral number and a number or an array of numbers
 `x` are optimized to return `x` unchanged:
@@ -266,7 +294,10 @@ x .>>> 𝟘  -> x
 Other broadcasted operations should work as can be inferred from the rules for numbers.
 
 
-## Working with dimensionful quantities
+</details>
+
+<details>
+<summary><H2>Dimensionful quantities</H2></summary>
 
 Neutral numbers can work with dimensionful numbers provided the `Neutrals` package be
 properly extended for such numbers and provided the operation makes sense (e.g., adding
@@ -297,7 +328,10 @@ x - 𝟘*unit(x) == x        # true
 Note that `𝟘*unit(x)` is equal but not identical to `zero(x)` because it is `𝟘` with the
 unit of `x`.
 
-## Related packages
+</details>
+
+<details>
+<summary><H2>Related packages</H2></summary>
 
 - In base Julia, `false` behaves as a strong zero when multiplied by a float. Moreover it
   preserves the sign of the other operand, e.g. `false*(-NaN)` yields `-0.0`. The sign is
@@ -312,3 +346,5 @@ unit of `x`.
 
 - [`StaticNumbers`](https://github.com/perrutquist/StaticNumbers.jl) is a generalization
   of `Zeros` to other any numeric values, not just `0` and `1`.
+
+</details>
