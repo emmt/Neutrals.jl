@@ -5,7 +5,7 @@ a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to 
 Versioning](https://semver.org/spec).
 
 
-## Unreleased
+## Version 0.3.0 (2025/05/26)
 
 ### Changed
 
