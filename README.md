@@ -289,6 +289,23 @@ x .>>> 𝟘  -> x
 
 Other broadcasted operations should work as can be inferred from the rules for numbers.
 
+For multiplying or dividing an array of numbers by neutral numbers, you may
+directly use the `*`, `/`, or `\` operators instead of `.*`, `./`, or `.\`:
+
+``` julia
+𝟘*x -> similar(x, typeof(𝟘*unit(eltype(x))))
+𝟙*x -> x
+𝟙\x -> x
+x/𝟙 -> x
+(-𝟙)*x -> -x
+(-𝟙)\x -> -x
+x/(-𝟙) -> -x
+```
+
+Note that `𝟘*x` is a lightweight array (`sizeof(𝟘*x) = 0`) whose elements are all equal to
+the singleton `𝟘` if `eltype(x)` is dimensionless or to the singleton `𝟘*unit(eltype(x))`
+if `eltype(x)` is dimensionful (see [Dimensionful Quantities](#dimensionful-quantities)).
+
 
 ## Ranges
 

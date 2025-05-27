@@ -566,6 +566,18 @@ impl_div(::Neutral{-1}, x::Number) = -impl_inv(x)
 Base.:(\)(x::Neutral, y::Complex) = y/x
 Base.:(\)(x::Complex, y::Neutral) = y/x
 
+# Add rules for multiplying or dividing arrays by neutral numbers.
+Base.:*(λ::Neutral, A::AbstractArray{<:Number}) = impl_mul(λ, A)
+Base.:*(A::AbstractArray{<:Number}, λ::Neutral) = impl_mul(λ, A)
+impl_mul(::Neutral{ 0}, A::AbstractArray{<:BareNumber}) = similar(A, Neutral{0})
+impl_mul(::Neutral{ 1}, A::AbstractArray{<:Number}) = A
+impl_mul(::Neutral{-1}, A::AbstractArray{<:Number}) = -A
+Base.:/(A::AbstractArray{<:Number}, λ::Neutral) = impl_div(A, λ)
+Base.:\(λ::Neutral, A::AbstractArray{<:Number}) = impl_div(A, λ)
+impl_div(A::AbstractArray{<:Number}, ::Neutral{ 0}) = throw(DivideError())
+impl_div(A::AbstractArray{<:Number}, ::Neutral{ 1}) = A
+impl_div(A::AbstractArray{<:Number}, ::Neutral{-1}) = -A
+
 """
     Neutrals.impl_tdv(x, y) -> x ÷ y
 

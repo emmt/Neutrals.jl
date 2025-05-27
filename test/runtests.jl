@@ -899,6 +899,62 @@ end
         @test x/ONE === x
         @test x/-ONE == -x
     end
+
+    @testset "Multiplication and division of arrays" begin
+        # Dimensionless array.
+        x = rand(Float32, 2, 3, 4)
+
+        z = @inferred ZERO*x
+        @test @inferred(x*ZERO) ≗ z
+        @test sizeof(z) == 0
+        @test length(z) == length(x)
+        @test size(z) == size(x)
+        @test axes(z) == axes(x)
+        @test eltype(z) === typeof(ZERO)
+
+        @test @inferred(ONE*x) === x
+        @test @inferred(x*ONE) === x
+
+        @test (-ONE)*x ≗ -x
+        @test x*(-ONE) ≗ -x
+
+        @test_throws DivideError x/ZERO
+        @test_throws DivideError ZERO\x
+
+        @test @inferred(ONE\x) === x
+        @test @inferred(x/ONE) === x
+
+        @test (-ONE)\x ≗ -x
+        @test x/(-ONE) ≗ -x
+
+        # Arrays with units.
+        y = x.*kg
+
+        z = @inferred ZERO*y
+        @test @inferred(y*ZERO) ≗ z
+        @test sizeof(z) == 0
+        @test length(z) == length(y)
+        @test size(z) == size(y)
+        @test axes(z) == axes(y)
+        @test eltype(z) === typeof(ZERO*kg)
+
+        @test @inferred(ONE*y) === y
+        @test @inferred(y*ONE) === y
+
+        @test (-ONE)*y ≗ -y
+        @test y*(-ONE) ≗ -y
+
+        @test_throws DivideError y/ZERO
+        @test_throws DivideError ZERO\y
+
+        @test @inferred(ONE\y) === y
+        @test @inferred(y/ONE) === y
+
+        @test (-ONE)\y ≗ -y
+        @test y/(-ONE) ≗ -y
+
+    end
+
 end
 
 end # module

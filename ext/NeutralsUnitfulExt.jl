@@ -12,6 +12,9 @@ end
 Neutrals.impl_mul(::Neutral{0}, x::AbstractQuantity) = ZERO*unit(x)
 Neutrals.impl_div(::Neutral{0}, x::AbstractQuantity) = ZERO/unit(x)
 
+Neutrals.impl_mul(::Neutral{0}, A::AbstractArray{<:AbstractQuantity}) =
+    similar(A, typeof(ZERO*unit(eltype(A))))
+
 Neutrals.is_dimensionless(::Type{<:AbstractQuantity}) = false
 Neutrals.is_dimensionless(::Type{<:AbstractQuantity{<:Any,NoDims}}) = true
 
