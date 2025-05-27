@@ -784,6 +784,90 @@ end
         end
     end
 
+    @testset "Other ranges" begin
+        @test ZERO:8 === 0:8
+        @test  ONE:8 === Base.OneTo(8)
+        @test -ONE:8 === -1:8
+
+        @test -3:ZERO === -3:0
+        @test -3:ONE  === -3:1
+        @test -3:-ONE === -3:-1
+
+        @test ZERO:0x03 === 0x00:0x03
+        @test  ONE:0x03 === Base.OneTo(0x03)
+        @test_throws InexactError -ONE:0x03
+
+        @test ZERO:Int16(3) === Int16(0):Int16(3)
+        @test  ONE:Int16(3) === Base.OneTo(Int16(3))
+        @test -ONE:Int16(3) === Int16(-1):Int16(3)
+
+        @test Int16(-4):ZERO === Int16(-4):Int16(0)
+        @test Int16(-4):ONE  === Int16(-4):Int16(1)
+        @test Int16(-4):-ONE === Int16(-4):Int16(-1)
+    end
+
+    @testset "Range $a:$b" for a in instances(Neutral), b in instances(Neutral)
+        r = @inferred a:b
+        if a === b
+            @test eltype(r) == typeof(a)
+            if a === ONE
+                @test typeof(r) == Base.OneTo{Neutral{1}}
+            else
+                @test typeof(r) == UnitRange{typeof(a)}
+            end
+            @test first(r) === a
+            @test last(r) === a
+            @test length(r) == 1
+            @test firstindex(r) == 1
+            @test lastindex(r) == 1
+            @test eachindex(r) == 1:1
+            @test axes(r) == (1:1,)
+            @test collect(r) ≗ [a]
+        else
+            @test eltype(r) == Int
+            if a === ONE
+                @test r === Base.OneTo(Int(b))
+            else
+                @test r === Int(a):Int(b)
+            end
+        end
+    end
+
+    @testset "Range $a:$s:$b" for a in instances(Neutral), s in instances(Neutral), b in instances(Neutral)
+        if iszero(s)
+            @test_throws Exception a:s:b
+        elseif s === ONE || a === s === b
+            @test a:s:b === a:b
+        else
+            a′, s′, b′ = map(Int, (a, s, b))
+            @test a:s:b === a′:s′:b′
+        end
+    end
+
+    @testset "Range $a:$s:$b" for (a,s,b) in ((ZERO,    1,  3),
+                                              ( ONE,    1,  4),
+                                              (-ONE,    1,  5),
+                                              (ZERO,  ONE,  3),
+                                              ( ONE,  ONE,  4),
+                                              (-ONE,  ONE,  5),
+                                              (ZERO,    2,  4),
+                                              ( ONE,    2,  5),
+                                              (-ONE,    2,  2),
+                                              (-ONE,  ONE, Int16(5)),
+                                              (-ONE,    0, ONE),
+                                              (  -1, ZERO,   3),
+                                              (  -1,  ONE,   3),
+                                              (   3, -ONE,   0))
+        if iszero(s)
+            @test_throws Exception a:s:b
+        elseif s === ONE
+            @test a:s:b === a:b
+        else
+            a′, s′, b′ = promote(a, s, b)
+            @test a:s:b === a′:s′:b′
+        end
+    end
+
     @testset "Operation with Unitful quantities" begin
         x = 3kg
         @test Neutrals.is_dimensionless(x) == false

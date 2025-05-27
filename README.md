@@ -28,6 +28,7 @@ Table of contents:
   * [Comparisons](#comparisons)
 * [Conversion Rules](#conversion-rules)
 * [Broadcasting Rules](#broadcasting-rules)
+* [Ranges](#ranges)
 * [Dimensionful Quantities](#dimensionful-quantities)
 * [Related packages](#related-packages)
 
@@ -288,6 +289,20 @@ x .>>> 𝟘  -> x
 
 Other broadcasted operations should work as can be inferred from the rules for numbers.
 
+
+## Ranges
+
+Ranges can be constructed with neutral numbers specified as the start, step, and/or stop
+parameters of the range. `𝟙:stop` is identical to `Base.OneTo(stop)` if `stop` is a
+non-neutral integer or is `𝟙` and is identical to `Base.OneTo(Int(stop))` otherwise.
+`start:𝟙:stop` identical to `start:stop` whatever, `start` and `stop`.  Examples:
+
+``` julia
+𝟙:6 -> Base.OneTo(6)
+3:𝟙:6 -> 3:6
+collect(𝟘:𝟘) -> [𝟘]
+collect(𝟙:𝟙) -> [𝟙]
+```
 
 ## Dimensionful Quantities
 

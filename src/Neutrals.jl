@@ -959,6 +959,29 @@ bcast_div(x::AbstractArray{<:Number}, ::Neutral{ 0}) = throw(DivideError())
 bcast_div(x::AbstractArray{<:Number}, ::Neutral{ 1}) = x
 bcast_div(x::AbstractArray{<:Number}, ::Neutral{-1}) = -x
 
+#-------------------------------------------------------------------------------- RANGES -
+
+# Considering the specific cases `step = 𝟘` and `start = step = stop = -𝟙` is to avoid
+# stack overflows.
+Base.:(:)(start::Integer, step::Neutral{0}, stop::Integer) = throw(ArgumentError("step cannot be zero"))
+Base.:(:)(start::Integer, step::Neutral{1}, stop::Integer) = start:stop
+Base.:(:)(start::Integer, step::Neutral{-1}, stop::Integer) = (:)(promote(start, step, stop)...)
+Base.:(:)(start::Neutral{-1}, step::Neutral{-1}, stop::Neutral{-1}) = -ONE:-ONE
+
+Base.:(:)(start::Neutral{1}, stop::Neutral{1}) = Base.OneTo(ONE)
+Base.:(:)(start::Neutral{1}, stop::Neutral) = Base.OneTo(Int(stop))
+Base.:(:)(start::Neutral{1}, stop::Integer) = Base.OneTo(stop)
+
+Base.length(r::UnitRange{T}) where {T<:Neutral} = 1
+Base.first(r::UnitRange{T}) where {T<:Neutral} = T()
+Base.last(r::UnitRange{T}) where {T<:Neutral} = T()
+
+# This fix is needed for Julia versions < 1.8.0-beta1 in order to be able to build a
+# UnitRange with start and stop being the same neutral number. Such as `𝟙:𝟙`.
+if VERSION < v"1.8.0-beta1" && isdefined(Base, :unitrange_last)
+    Base.unitrange_last(start::T, stop::T) where {T<:Neutral} = stop
+end
+
 #------------------------------------------------------------------------ INITIALIZATION -
 
 function __init__()
