@@ -12,8 +12,9 @@ Versioning](https://semver.org).
 
 - Ranges can be constructed with neutral numbers specified as the start, step, and/or stop
   parameters of the range. `𝟙:stop` is identical to `Base.OneTo(stop)` if `stop` is a
-  non-neutral integer or is `𝟙` and is identical to `Base.OneTo(Int(stop))` otherwise.
-  `start:𝟙:stop` identical to `start:stop` whatever, `start` and `stop`.
+  non-neutral integer or is `𝟙` and is identical to `Base.OneTo(Int(stop))` if `staop` is
+  another neutral number. `start:𝟙:stop` is identical to `start:stop` whatever, `start` and
+  `stop`.
 
 ### Fixed
 
