@@ -723,6 +723,58 @@ end
         @test x .<< y === x << y
     end
 
+    @testset "Broadcasted operations with neutral numbers" begin
+        @test  ZERO  .+  ZERO  ===  ZERO  +  ZERO
+        @test  ZERO  .+   ONE  ===  ZERO  +   ONE
+        @test  ZERO  .+ (-ONE) ===  ZERO  + (-ONE)
+        @test   ONE  .+  ZERO  ===   ONE  +  ZERO
+        @test   ONE  .+   ONE  ===   ONE  +   ONE
+        @test   ONE  .+ (-ONE) ===   ONE  + (-ONE)
+        @test (-ONE) .+  ZERO  === (-ONE) +  ZERO
+        @test (-ONE) .+   ONE  === (-ONE) +   ONE
+        @test (-ONE) .+ (-ONE) === (-ONE) + (-ONE)
+
+        @test  ZERO  .-  ZERO  ===  ZERO  -  ZERO
+        @test  ZERO  .-   ONE  ===  ZERO  -   ONE
+        @test  ZERO  .- (-ONE) ===  ZERO  - (-ONE)
+        @test   ONE  .-  ZERO  ===   ONE  -  ZERO
+        @test   ONE  .-   ONE  ===   ONE  -   ONE
+        @test   ONE  .- (-ONE) ===   ONE  - (-ONE)
+        @test (-ONE) .-  ZERO  === (-ONE) -  ZERO
+        @test (-ONE) .-   ONE  === (-ONE) -   ONE
+        @test (-ONE) .- (-ONE) === (-ONE) - (-ONE)
+
+        @test  ZERO  .*  ZERO  ===  ZERO  *  ZERO
+        @test  ZERO  .*   ONE  ===  ZERO  *   ONE
+        @test  ZERO  .* (-ONE) ===  ZERO  * (-ONE)
+        @test   ONE  .*  ZERO  ===   ONE  *  ZERO
+        @test   ONE  .*   ONE  ===   ONE  *   ONE
+        @test   ONE  .* (-ONE) ===   ONE  * (-ONE)
+        @test (-ONE) .*  ZERO  === (-ONE) *  ZERO
+        @test (-ONE) .*   ONE  === (-ONE) *   ONE
+        @test (-ONE) .* (-ONE) === (-ONE) * (-ONE)
+
+        @test_throws DivideError  ZERO  ./ ZERO
+        @test_throws DivideError   ONE  ./ ZERO
+        @test_throws DivideError (-ONE) ./ ZERO
+        @test  ZERO  ./   ONE  ===  ZERO  /   ONE  === ZERO
+        @test  ZERO  ./ (-ONE) ===  ZERO  / (-ONE) === ZERO
+        @test   ONE  ./   ONE  ===   ONE  /   ONE  ===  ONE
+        @test   ONE  ./ (-ONE) ===   ONE  / (-ONE) === -ONE
+        @test (-ONE) ./   ONE  === (-ONE) /   ONE  === -ONE
+        @test (-ONE) ./ (-ONE) === (-ONE) / (-ONE) ===  ONE
+
+        @test_throws DivideError ZERO .\  ZERO
+        @test_throws DivideError ZERO .\   ONE
+        @test_throws DivideError ZERO .\ (-ONE)
+        @test   ONE  .\  ZERO  ===   ONE  \  ZERO  === ZERO
+        @test (-ONE) .\  ZERO  === (-ONE) \  ZERO  === ZERO
+        @test   ONE  .\   ONE  ===   ONE  \   ONE  ===  ONE
+        @test (-ONE) .\   ONE  === (-ONE) \   ONE  === -ONE
+        @test   ONE  .\ (-ONE) ===   ONE  \ (-ONE) === -ONE
+        @test (-ONE) .\ (-ONE) === (-ONE) \ (-ONE) ===  ONE
+    end
+
     @testset "Broadcasted operations with T=$T" for T in (Bool, Int16, Float32)
         for x in (zero(T), oneunit(T), rand(T, 3, 4),)
             if x isa AbstractArray
@@ -740,9 +792,13 @@ end
             @test x .- ZERO === x
             @test ZERO .- x ≗ -x
             @test x .* ZERO ≗ z
+            @test x * ZERO ≗ z
             @test ZERO .* x ≗ z
+            @test ZERO * x ≗ z
             @test_throws DivideError x ./ ZERO
+            @test_throws DivideError x / ZERO
             @test ZERO ./ x ≗ z
+            @test x .\ ZERO ≗ z
             @test x.^ZERO ≗ u
 
             @test x .+ ONE ≗ x .+ one(eltype(x))
@@ -750,9 +806,13 @@ end
             @test x .- ONE ≗ x .- one(eltype(x))
             @test ONE .- x ≗ one(eltype(x)) .- x
             @test x .* ONE === x
+            @test x * ONE === x
             @test ONE .* x === x
+            @test ONE * x === x
             @test x ./ ONE === x
+            @test x / ONE === x
             @test ONE .\ x === x
+            @test ONE \ x === x
             @test ONE ./ x ≗ r
             @test x .\ ONE ≗ r
             @test x.^ONE === x
@@ -762,12 +822,20 @@ end
             @test x .- (-ONE) ≗ x .+ one(eltype(x))
             @test (-ONE) .- x ≗ (-one(eltype(x))) .- x
             @test x .* (-ONE) ≗ -x
+            @test x * (-ONE) ≗ -x
             @test (-ONE) .* x ≗ -x
+            @test (-ONE) * x ≗ -x
             @test x ./ (-ONE) ≗ -x
+            @test x / (-ONE) ≗ -x
             @test (-ONE) .\ x ≗ -x
+            @test (-ONE) \ x ≗ -x
             @test (-ONE) ./ x ≗ -r
             @test x .\ (-ONE) ≗ -r
             @test x.^(-ONE) ≗ r
+
+            @test_throws DivideError ZERO   ./ z
+            @test_throws DivideError  ONE   ./ z
+            @test_throws DivideError (-ONE) ./ z
 
             if T <: Integer
                 @test x .÷ ONE === x
