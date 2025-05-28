@@ -1025,6 +1025,56 @@ end
         @test (-ONE)\y ≗ -y
         @test y/(-ONE) ≗ -y
 
+        # Elementwise.
+        x = @inferred Array{typeof(ZERO*cm)}(undef, 2, 3, 4)
+        @test_throws DivideError  ZERO  ./ x
+        @test_throws DivideError   ONE  ./ x
+        @test_throws DivideError (-ONE) ./ x
+        @test_throws DivideError x .\  ZERO
+        @test_throws DivideError x .\   ONE
+        @test_throws DivideError x .\ (-ONE)
+        let r = @inferred   ZERO .* x
+            @test @inferred(ZERO  * x) ≗ r
+            @test @inferred(x .* ZERO) ≗ r
+            @test @inferred(x  * ZERO) ≗ r
+        end
+        let r = @inferred   ONE .* x
+            @test @inferred(ONE  * x) ≗ r
+            @test @inferred(x .* ONE) ≗ r
+            @test @inferred(x  * ONE) ≗ r
+        end
+        let r = @inferred   (-ONE) .* x
+            @test @inferred((-ONE)  * x) ≗ r
+            @test @inferred(x .* (-ONE)) ≗ r
+            @test @inferred(x  * (-ONE)) ≗ r
+        end
+
+        x = @inferred Array{typeof(ONE*cm)}(undef, 2, 3, 2)
+        @test  ZERO  .* x ≗ ZERO*x
+        @test  ZERO   * x ≗ ZERO*x
+        @test   ONE  .* x === x
+        @test   ONE   * x === x
+        @test (-ONE) .* x ≗ -x
+        @test (-ONE)  * x ≗ -x
+        @test x .*  ZERO  ≗ ZERO*x
+        @test x  *  ZERO  ≗ ZERO*x
+        @test x .*   ONE  === x
+        @test x  *   ONE  === x
+        @test x .* (-ONE) ≗ -x
+        @test x  * (-ONE) ≗ -x
+
+        @test_throws DivideError x ./ ZERO
+        @test_throws DivideError x  / ZERO
+        @test x ./   ONE  === x
+        @test x  /   ONE  === x
+        @test x ./ (-ONE) ≗ -x
+        @test x  / (-ONE) ≗ -x
+        @test_throws DivideError ZERO .\ x
+        @test_throws DivideError ZERO  \ x
+        @test   ONE  .\ x === x
+        @test   ONE   \ x === x
+        @test (-ONE) .\ x ≗ -x
+        @test (-ONE)  \ x ≗ -x
     end
 
     @testset "Miscellaneous properties" begin

@@ -14,7 +14,7 @@ Neutrals.impl_mul(x::Neutral{0}, y::AbstractQuantity) = x*unit(y)
 Neutrals.impl_div(x::Neutral{0}, y::AbstractQuantity) = x/unit(y)
 
 Neutrals.impl_mul(x::Neutral{0}, y::AbstractArray{<:AbstractQuantity}) =
-    similar(y, typeof(x*oneunit(eltype(y))))
+    similar(y, typeof(x*unit(eltype(y))))
 
 Neutrals.impl_div(x::Neutral, y::AbstractArray{<:AbstractQuantity{Neutral{0}}}) =
     throw(DivideError())
@@ -22,7 +22,7 @@ Neutrals.impl_div(x::Neutral, y::AbstractArray{<:AbstractQuantity}) =
     _impl_div(x, y) # to dispatch on x
 
 Neutrals._impl_div(x::Neutral{0}, y::AbstractArray{<:AbstractQuantity}) =
-    similar(y, typeof(x/oneunit(eltype(y))))
+    similar(y, typeof(x/unit(eltype(y))))
 
 Neutrals.is_dimensionless(::Type{<:AbstractQuantity}) = false
 Neutrals.is_dimensionless(::Type{<:AbstractQuantity{<:Any,NoDims}}) = true
