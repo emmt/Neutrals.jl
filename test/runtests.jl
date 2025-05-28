@@ -278,6 +278,10 @@ end
         @test is_signed(typeof(x))
     end
 
+    @testset "$f($x,$y)" for f in (flipsign, copysign), x in instances(Neutral), y in  instances(Neutral)
+        @test f(x, y) === Neutral(f(Int(x), Int(y)))
+    end
+
     @testset "Conversion of $x to type $T" for T in types, x in instances(Neutral)
         # `convert(T,x)` and `T(x)` should yield the same result equal to `T(value(x))`
         # except if `x` is `-ONE` and `T` is unsigned in which case an `InexactError`
