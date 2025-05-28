@@ -752,7 +752,9 @@ end
             @test x .* ONE === x
             @test ONE .* x === x
             @test x ./ ONE === x
+            @test ONE .\ x === x
             @test ONE ./ x ≗ r
+            @test x .\ ONE ≗ r
             @test x.^ONE === x
 
             @test x .+ (-ONE) ≗ x .- one(eltype(x))
@@ -762,7 +764,9 @@ end
             @test x .* (-ONE) ≗ -x
             @test (-ONE) .* x ≗ -x
             @test x ./ (-ONE) ≗ -x
+            @test (-ONE) .\ x ≗ -x
             @test (-ONE) ./ x ≗ -r
+            @test x .\ (-ONE) ≗ -r
             @test x.^(-ONE) ≗ r
 
             if T <: Integer

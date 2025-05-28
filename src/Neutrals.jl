@@ -26,6 +26,9 @@ if !isdefined(Base, :get_extension)
     using Requires
 end
 
+# Union of type of operands supporting the optimization of broadcasting rules.
+const Operand{T<:Number} = Union{T,AbstractArray{<:T}}
+
 """
     Neutral{V}()
     Neutral(V)
@@ -532,46 +535,54 @@ impl_sub(::Neutral{ 1}, x::Bool) = 1 - Int(x)
 impl_sub(::Neutral{-1}, x::Bool) = -1 - Int(x)
 
 """
-    Neutrals.impl_mul(x, y) -> x*y
+    Neutrals.impl_mul(x, y) -> x * y    # if x and y are numbers
+    Neutrals.impl_mul(x, y) -> x .* y   # if one of x or y is an array
 
-implements multiplication of number `x` by number `y` when at least one of the operands is a
-neutral number.
+implement scalar or element-wise multiplication of `x` by `y` when at least one of the
+operands is a neutral number while the other is a number or an array of numbers.
 
 This method can be overridden by specializing it when the first operand is a neutral
 number.
 
 """
-impl_mul(x::Number, y::Neutral) = impl_mul(y, x) # put neutral number first
-impl_mul(::Neutral{ 0}, x::BareNumber) = ZERO
-impl_mul(::Neutral{ 1}, x::Number) = x
-impl_mul(::Neutral{-1}, x::Number) = -x
+impl_mul(x::Operand{Number}, y::Neutral) = impl_mul(y, x) # put neutral number first
+
+# Scalar or element-wise multiplication `x*y` with `x` a neutral number.
+impl_mul(x::Neutral{ 0}, y::BareNumber) = ZERO
+impl_mul(x::Neutral{ 0}, y::AbstractArray{<:BareNumber}) = similar(y, Neutral{0})
+impl_mul(x::Neutral{ 1}, y::Operand{Number}) = y
+impl_mul(x::Neutral{-1}, y::Operand{Number}) = -y
+
+Base.:*(x::Neutral, y::AbstractArray{<:Number}) = impl_mul(x, y)
+Base.:*(x::AbstractArray{<:Number}, y::Neutral) = impl_mul(y, x) # put neutral number first
 
 """
-    Neutrals.impl_div(x, y) -> x / y
+    Neutrals.impl_div(x, y) -> x / y    # if x and y are numbers
+    Neutrals.impl_div(x, y) -> x ./ y   # if one of x or y is an array
 
-implements division of number `x` by number `y` when at least one of the operands is a
-neutral number.
+implement scalar or element-wise division of `x` by `y` when at least one of the operands
+is a neutral number while the other is a number or an array of numbers.
 
 """
-impl_div(x::Number, ::Neutral{ 0}) = throw(DivideError())
-impl_div(x::Number, ::Neutral{ 1}) = x
-impl_div(x::Number, ::Neutral{-1}) = -x
+impl_div(x::Operand{Number}, y::Neutral{0}) = throw(DivideError())
+impl_div(x::Operand{Number}, y::Neutral{1}) = x
+impl_div(x::Operand{Number}, y::Neutral{-1}) = -x
 
-impl_div(::Neutral{ 0}, x::BareNumber) = ZERO
-impl_div(::Neutral{ 1}, x::Number) = impl_inv(x)
-impl_div(::Neutral{-1}, x::Number) = -impl_inv(x)
+impl_div(x::Neutral{ 0}, y::BareNumber) = ZERO
+impl_div(x::Neutral{ 1}, y::Number) = impl_inv(y)
+impl_div(x::Neutral{-1}, y::Number) = -impl_inv(y)
 
-# Add rules for multiplying or dividing arrays by neutral numbers.
-Base.:*(λ::Neutral, A::AbstractArray{<:Number}) = impl_mul(λ, A)
-Base.:*(A::AbstractArray{<:Number}, λ::Neutral) = impl_mul(λ, A)
-impl_mul(::Neutral{ 0}, A::AbstractArray{<:BareNumber}) = similar(A, Neutral{0})
-impl_mul(::Neutral{ 1}, A::AbstractArray{<:Number}) = A
-impl_mul(::Neutral{-1}, A::AbstractArray{<:Number}) = -A
-Base.:/(A::AbstractArray{<:Number}, λ::Neutral) = impl_div(A, λ)
-Base.:\(λ::Neutral, A::AbstractArray{<:Number}) = impl_div(A, λ)
-impl_div(A::AbstractArray{<:Number}, ::Neutral{ 0}) = throw(DivideError())
-impl_div(A::AbstractArray{<:Number}, ::Neutral{ 1}) = A
-impl_div(A::AbstractArray{<:Number}, ::Neutral{-1}) = -A
+# Element-wise division of neutral number `x` by array `y`. Division by zero is first
+# checked, then the result is computed according to the specific value of `x` using
+# auxiliary function `_impl_div` to dispatch on `x`.
+impl_div(x::Neutral, y::AbstractArray{Neutral{0}}) = throw(DivideError())
+impl_div(x::Neutral, y::AbstractArray{<:Number}) = _impl_div(x, y) # to dispatch on x
+_impl_div(x::Neutral{ 0}, y::AbstractArray{<:BareNumber}) = similar(y, Neutral{0})
+_impl_div(x::Neutral{ 1}, y::AbstractArray{<:Number}) = impl_inv.(y)
+_impl_div(x::Neutral{-1}, y::AbstractArray{<:Number}) = -impl_inv.(y)
+
+Base.:/(x::AbstractArray{<:Number}, y::Neutral) = impl_div(x, y)
+Base.:\(x::Neutral, y::AbstractArray{<:Number}) = impl_div(y, x)
 
 """
     Neutrals.impl_tdv(x, y) -> x ÷ y
@@ -910,9 +921,6 @@ end
 # We specialize the few broadcasted operations, like `x .+ 𝟘` that could yield `x` unchanged
 # or a result like `x .* 𝟘` to yield an array of `𝟘`s without computations.
 
-# Union of type of operands supporting the optimization of broadcasting rules.
-const Operand{T<:Number} = Union{T,AbstractArray{<:T}}
-
 # Base method to extend for broadcasted operations.
 import Base.Broadcast: broadcasted
 
@@ -931,12 +939,16 @@ end
 broadcasted(::typeof(-), x::Operand{Number}, ::Neutral{0}) = x
 
 broadcasted(::typeof(*), x::Neutral, y::Neutral) = impl_mul(x, y)
-broadcasted(::typeof(*), x::Operand{Number}, y::Neutral) = bcast_mul(y, x) # put neutral number 1st
-broadcasted(::typeof(*), x::Neutral, y::Operand{Number}) = bcast_mul(x, y)
+broadcasted(::typeof(*), x::Operand{Number}, y::Neutral) = impl_mul(y, x) # put neutral number 1st
+broadcasted(::typeof(*), x::Neutral, y::Operand{Number}) = impl_mul(x, y)
 
 broadcasted(::typeof(/), x::Neutral, y::Neutral) = impl_div(x, y)
-broadcasted(::typeof(/), x::Operand{Number}, y::Neutral) = bcast_div(x, y)
-broadcasted(::typeof(/), x::Neutral, y::Operand{Number}) = bcast_div(x, y)
+broadcasted(::typeof(/), x::Operand{Number}, y::Neutral) = impl_div(x, y)
+broadcasted(::typeof(/), x::Neutral, y::Operand{Number}) = impl_div(x, y)
+
+broadcasted(::typeof(\), x::Neutral, y::Neutral) = broadcasted(/, y, x)
+broadcasted(::typeof(\), x::Neutral, y::Operand{Number}) = broadcasted(/, y, x)
+broadcasted(::typeof(\), x::Operand{Number}, y::Neutral) = broadcasted(/, y, x)
 
 broadcasted(::typeof(^), x::Operand{Number}, ::Neutral{1}) = x
 
@@ -949,22 +961,6 @@ broadcasted(::typeof(>>>), x::Operand{Integer}, ::Neutral{0}) = x
 # This one is special (as usual with Booleans...).
 broadcasted(::typeof(&), ::Neutral{1}, x::Operand{Bool}) = x
 broadcasted(::typeof(&), x::Operand{Bool}, ::Neutral{1}) = x
-
-# Auxiliary function for `.*`.
-bcast_mul(x, y) = impl_mul(x, y)
-bcast_mul(::Neutral{ 0}, x::AbstractArray{<:Number}) = similar(x, Neutral{0})
-bcast_mul(::Neutral{ 1}, x::AbstractArray{<:Number}) = x
-bcast_mul(::Neutral{-1}, x::AbstractArray{<:Number}) = -x
-
-# Auxiliary function for `./`.
-bcast_div(x, y) = impl_div(x, y)
-bcast_div(::Neutral{ 0}, x::AbstractArray{<:Number}) = similar(x, Neutral{0})
-bcast_div(::Neutral{ 1}, x::AbstractArray{<:Number}) = impl_inv.(x)
-bcast_div(::Neutral{-1}, x::AbstractArray{<:Number}) = -impl_inv.(x)
-#
-bcast_div(x::AbstractArray{<:Number}, ::Neutral{ 0}) = throw(DivideError())
-bcast_div(x::AbstractArray{<:Number}, ::Neutral{ 1}) = x
-bcast_div(x::AbstractArray{<:Number}, ::Neutral{-1}) = -x
 
 #----------------------------------------------------------------------- COMPLEX NUMBERS -
 # Specific rules for complex numbers.
