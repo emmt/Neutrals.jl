@@ -366,14 +366,12 @@ unit of `x`.
   preserves the sign of the other operand, e.g. `false*(-NaN)` yields `-0.0`. The sign is
   not preserved in the multiplication by `𝟘` which yields `𝟘`.
 
-- [`Zeros`](https://github.com/perrutquist/Zeros.jl) provides `Zero()` and `One()` which
-  are also strong neutral elements for addition and multiplication with numbers. `Zero()`
-  and `One()` are similar to `𝟘` or `ZERO`, and `𝟙` or `ONE`. However, `-One()` yields
-  `-1` which is not a singleton, division by `One()` converts the other operand to
-  floating-point, multiplication of a dimensionful number and `Zero()` is not supported,
-  etc.
+- [`Zeros.jl`](https://github.com/perrutquist/Zeros.jl) was a source of inspiration to
+  improve `Neutrals.jl`. `Zeros.jl` provides `Zero()` and `One()` which are also strong
+  neutral elements for addition and multiplication with numbers. `Zero()` and `One()` are
+  similar to `𝟘` or `ZERO`, and `𝟙` or `ONE`. However, `-One()` yields `-1` which is not a
+  singleton, division by `One()` converts the other operand to floating-point,
+  multiplication of a dimensionful number and `Zero()` is not supported, etc.
 
-- [`StaticNumbers`](https://github.com/perrutquist/StaticNumbers.jl) is a generalization
+- [`StaticNumbers.jl`](https://github.com/perrutquist/StaticNumbers.jl) is a generalization
   of `Zeros` to other any numeric values, not just `0` and `1`.
-
-</details>
