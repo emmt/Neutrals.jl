@@ -280,6 +280,11 @@ for T in (:Bool, :BigInt) # remove ambiguities for these types
     @eval Base.rem(::Neutral{x}, ::Type{$T}) where {x} = x % $T
 end
 
+Base.modf(x::Neutral) = (ZERO, x)
+
+Base.widen(x::Neutral) = x
+Base.widen(::Type{T}) where {T<:Neutral} = T
+
 #----------------------------------------------------------------------- PROMOTION RULES -
 
 """

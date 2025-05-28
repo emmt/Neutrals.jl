@@ -276,6 +276,9 @@ end
         @test isodd(x) === isodd(Int(x))
         @test is_signed(x)
         @test is_signed(typeof(x))
+        @test modf(x) === (ZERO, x)
+        @test widen(x) === x
+        @test widen(typeof(x)) === typeof(x)
     end
 
     @testset "$f($x,$y)" for f in (flipsign, copysign), x in instances(Neutral), y in  instances(Neutral)

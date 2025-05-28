@@ -8,6 +8,8 @@ Versioning](https://semver.org).
 
 ### Added
 
+- Extend `modf` and `widen` for neutral numbers.
+
 - Arrays of numbers can be efficiently multiplied or divided by neutral numbers.
 
 - Ranges can be constructed with neutral numbers specified as the start, step, and/or stop
