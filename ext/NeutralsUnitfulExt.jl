@@ -9,11 +9,20 @@ else
 end
 
 # Preserve units in multiplication and division.
-Neutrals.impl_mul(::Neutral{0}, x::AbstractQuantity) = ZERO*unit(x)
-Neutrals.impl_div(::Neutral{0}, x::AbstractQuantity) = ZERO/unit(x)
+Neutrals.impl_mul(x::Neutral{0}, y::AbstractQuantity) = x*unit(y)
 
-Neutrals.impl_mul(::Neutral{0}, A::AbstractArray{<:AbstractQuantity}) =
-    similar(A, typeof(ZERO*unit(eltype(A))))
+Neutrals.impl_div(x::Neutral{0}, y::AbstractQuantity) = x/unit(y)
+
+Neutrals.impl_mul(x::Neutral{0}, y::AbstractArray{<:AbstractQuantity}) =
+    similar(y, typeof(x*oneunit(eltype(y))))
+
+Neutrals.impl_div(x::Neutral, y::AbstractArray{<:AbstractQuantity{Neutral{0}}}) =
+    throw(DivideError())
+Neutrals.impl_div(x::Neutral, y::AbstractArray{<:AbstractQuantity}) =
+    _impl_div(x, y) # to dispatch on x
+
+Neutrals._impl_div(x::Neutral{0}, y::AbstractArray{<:AbstractQuantity}) =
+    similar(y, typeof(x/oneunit(eltype(y))))
 
 Neutrals.is_dimensionless(::Type{<:AbstractQuantity}) = false
 Neutrals.is_dimensionless(::Type{<:AbstractQuantity{<:Any,NoDims}}) = true

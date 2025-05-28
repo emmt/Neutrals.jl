@@ -577,7 +577,7 @@ impl_div(x::Neutral{-1}, y::Number) = -impl_inv(y)
 # auxiliary function `_impl_div` to dispatch on `x`.
 impl_div(x::Neutral, y::AbstractArray{Neutral{0}}) = throw(DivideError())
 impl_div(x::Neutral, y::AbstractArray{<:Number}) = _impl_div(x, y) # to dispatch on x
-_impl_div(x::Neutral{ 0}, y::AbstractArray{<:BareNumber}) = similar(y, Neutral{0})
+_impl_div(x::Neutral{ 0}, y::AbstractArray{<:BareNumber}) = similar(y, typeof(x))
 _impl_div(x::Neutral{ 1}, y::AbstractArray{<:Number}) = impl_inv.(y)
 _impl_div(x::Neutral{-1}, y::AbstractArray{<:Number}) = -impl_inv.(y)
 
