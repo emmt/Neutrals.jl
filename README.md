@@ -30,6 +30,7 @@ Table of contents:
 * [Broadcasting Rules](#broadcasting-rules)
 * [Ranges](#ranges)
 * [Dimensionful Quantities](#dimensionful-quantities)
+* [Miscellaneous](#miscellaneous)
 * [Related packages](#related-packages)
 
 
@@ -351,6 +352,12 @@ x - 𝟘*unit(x) == x        # true
 
 Note that `𝟘*unit(x)` is equal but not identical to `zero(x)` because it is `𝟘` with the
 unit of `x`.
+
+
+## Miscellaneous
+
+`Complex(x,y)` and `complex(x,y)` yield the same result as `x + y*im` even though `x` or
+`y` is a neutral number.
 
 
 ## Related Packages

@@ -15,6 +15,11 @@ Versioning](https://semver.org/spec).
   non-neutral integer or is `𝟙` and is identical to `Base.OneTo(Int(stop))` otherwise.
   `start:𝟙:stop` identical to `start:stop` whatever, `start` and `stop`.
 
+### Fixed
+
+- `Complex(x, y)` and `complex(x, y)` behave as `x + y*im` when at least one of `x` or `y`
+  is a neutral number.
+
 
 ## Version 0.3.0 (2025/05/26)
 

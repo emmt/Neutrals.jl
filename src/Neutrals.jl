@@ -561,11 +561,6 @@ impl_div(::Neutral{ 0}, x::BareNumber) = ZERO
 impl_div(::Neutral{ 1}, x::Number) = impl_inv(x)
 impl_div(::Neutral{-1}, x::Number) = -impl_inv(x)
 
-# For the left division between a complex number and a neutral number, we want to avoid
-# calling the adjoint method which would convert a Complex{Bool} into a Complex{Int}).
-Base.:(\)(x::Neutral, y::Complex) = y/x
-Base.:(\)(x::Complex, y::Neutral) = y/x
-
 # Add rules for multiplying or dividing arrays by neutral numbers.
 Base.:*(λ::Neutral, A::AbstractArray{<:Number}) = impl_mul(λ, A)
 Base.:*(A::AbstractArray{<:Number}, λ::Neutral) = impl_mul(λ, A)
@@ -970,6 +965,20 @@ bcast_div(::Neutral{-1}, x::AbstractArray{<:Number}) = -impl_inv.(x)
 bcast_div(x::AbstractArray{<:Number}, ::Neutral{ 0}) = throw(DivideError())
 bcast_div(x::AbstractArray{<:Number}, ::Neutral{ 1}) = x
 bcast_div(x::AbstractArray{<:Number}, ::Neutral{-1}) = -x
+
+#----------------------------------------------------------------------- COMPLEX NUMBERS -
+# Specific rules for complex numbers.
+
+# Extend `Complex(x,y)` to behave as `x + y*im` when at least one of `x` or `y` is a
+# neutral number. (The 3rd rule is needed to remove any ambiguities.)
+Base.Complex(x::Neutral{0}, y::Real      ) = y*im # 𝟘 + y*im -> y*im
+Base.Complex(x::Real,       y::Neutral{0}) = x    # x + 𝟘*im -> x
+Base.Complex(x::Neutral{0}, y::Neutral{0}) = ZERO # 𝟘 + 𝟘*im -> 𝟘
+
+# For the left division between a complex number and a neutral number, we want to avoid
+# calling the adjoint method which would convert a Complex{Bool} into a Complex{Int}).
+Base.:(\)(x::Neutral, y::Complex) = y/x
+Base.:(\)(x::Complex, y::Neutral) = y/x
 
 #-------------------------------------------------------------------------------- RANGES -
 

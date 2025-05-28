@@ -955,6 +955,16 @@ end
 
     end
 
+    @testset "Miscellaneous properties" begin
+        @test Complex(ZERO, ZERO) === complex(ZERO, ZERO) === ZERO + ZERO*im   === ZERO
+        @test Complex(ZERO, ONE)  === complex(ZERO, ONE)  === ZERO + ONE*im    === im
+        @test Complex(ZERO, 2)    === complex(ZERO, 2)    === ZERO + 2im       === 2im
+        @test Complex(ZERO, pi)   === complex(ZERO, pi)   === ZERO + pi*im     === complex(false, pi)
+        @test Complex(ZERO, 3//2) === complex(ZERO, 3//2) === ZERO + (3//2)*im === complex(false, 3//2)
+        @test Complex(ONE,  ZERO) === complex(ONE,  ZERO) === ONE  + ZERO*im   === ONE
+        @test Complex(pi,   ZERO) === complex(pi,   ZERO) === pi   + ZERO*im   === pi
+        @test Complex(3//2, ZERO) === complex(3//2, ZERO) === 3//2 + ZERO*im   === 3//2
+    end
 end
 
 end # module
