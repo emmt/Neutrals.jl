@@ -4,6 +4,24 @@ This page describes the most important changes in `Neutrals`. The format is base
 a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic
 Versioning](https://semver.org).
 
+## Unreleased
+
+### Added
+
+- Tests with [`Aqua.jl`](https://github.com/JuliaTesting/Aqua.jl).
+
+### Changed
+
+- The API of the `Neutral.impl_*` methods implementing binary operations has changed.
+  These methods now take a leading argument which is `Val(1)` if only the 1st operand is a
+  neutral number, `Val(2)` if only the 2nd operand is a neutral number, and `Val(3)` if
+  both operands are neutral numbers.
+
+### Fixed
+
+- Many potential ambiguities have been fixed.
+
+
 ## Version 0.3.1 (2025/05/28)
 
 ### Added

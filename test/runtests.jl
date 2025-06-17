@@ -890,7 +890,7 @@ end
         if a === b
             @test eltype(r) == typeof(a)
             if a === ONE
-                @test typeof(r) == Base.OneTo{Neutral{1}}
+                @test typeof(r) == Base.OneTo{typeof(b)}
             else
                 @test typeof(r) == UnitRange{typeof(a)}
             end
@@ -1093,6 +1093,10 @@ end
         @test Complex(ONE,  ZERO) === complex(ONE,  ZERO) === ONE  + ZERO*im   === ONE
         @test Complex(pi,   ZERO) === complex(pi,   ZERO) === pi   + ZERO*im   === pi
         @test Complex(3//2, ZERO) === complex(3//2, ZERO) === 3//2 + ZERO*im   === 3//2
+    end
+
+    if VERSION ≥ v"1.6"
+        include("aqua.jl")
     end
 end
 
