@@ -375,7 +375,9 @@ unit of `x`.
   neutral elements for addition and multiplication with numbers. `Zero()` and `One()` are
   similar to `𝟘` or `ZERO`, and `𝟙` or `ONE`. However, `-One()` yields `-1` which is not a
   singleton, division by `One()` converts the other operand to floating-point,
-  multiplication of a dimensionful number and `Zero()` is not supported, etc.
+  multiplication of a dimensionful number and `Zero()` is not supported, etc. Some
+  broadcasted binary operations involving a neutral number and and array `A` are faster,
+  like `𝟘 .+ A` compared to `Zero() .+ A`.
 
 - [`StaticNumbers.jl`](https://github.com/perrutquist/StaticNumbers.jl) is a generalization
   of `Zeros` to other any numeric values, not just `0` and `1`.
