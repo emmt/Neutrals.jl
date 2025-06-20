@@ -48,7 +48,7 @@ Before version 1.3 of Julia, `𝟘` and `𝟙` cannot be used as names of consta
 This section describes the rules involving a neutral number and any other number. For
 [commutative operations](https://en.wikipedia.org/wiki/Commutative_property) like the
 multiplication (`*`), the addition (`+`), binary bitwise operations (`|`, `&`, and `xor`
-or `⊻`), and the comparison for equality (`==`), the same rules apply if the operand are
+or `⊻`), and the comparison for equality (`==`), the same rules apply if the operands are
 exchanged.
 
 ### Addition

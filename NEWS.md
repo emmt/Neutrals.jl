@@ -4,7 +4,7 @@ This page describes the most important changes in `Neutrals`. The format is base
 a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic
 Versioning](https://semver.org).
 
-## Unreleased
+## Version 0.3.2 (2025-06-20)
 
 ### Added
 
@@ -22,7 +22,7 @@ Versioning](https://semver.org).
 - Many potential ambiguities have been fixed.
 
 
-## Version 0.3.1 (2025/05/28)
+## Version 0.3.1 (2025-05-28)
 
 ### Added
 
@@ -42,7 +42,7 @@ Versioning](https://semver.org).
   is a neutral number.
 
 
-## Version 0.3.0 (2025/05/26)
+## Version 0.3.0 (2025-05-26)
 
 ### Changed
 
@@ -51,7 +51,7 @@ Versioning](https://semver.org).
   broadcasted operations should yield the same result as before.
 
 
-## Version 0.2.2 (2025/05/26)
+## Version 0.2.2 (2025-05-26)
 
 ### Fixed
 
@@ -65,14 +65,14 @@ Versioning](https://semver.org).
   `-one(x) - x` (after this fix).
 
 
-## Version 0.2.1 (2025/05/22)
+## Version 0.2.1 (2025-05-22)
 
 ### Fixed
 
 - Ambiguities in binary operations involving a complex and a neutral number.
 
 
-## Version 0.2.0 (2025/05/21)
+## Version 0.2.0 (2025-05-21)
 
 ### Fixed
 
