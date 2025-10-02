@@ -2,8 +2,8 @@
 [![Build Status](https://github.com/emmt/Neutrals.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/emmt/Neutrals.jl/actions/workflows/CI.yml?query=branch%3Amain)
 [![Build Status](https://ci.appveyor.com/api/projects/status/github/emmt/Neutrals.jl?svg=true)](https://ci.appveyor.com/project/emmt/Neutrals-jl)
 [![version](https://juliahub.com/docs/General/Neutrals/stable/version.svg)](https://juliahub.com/ui/Packages/General/Neutrals)
-[![deps](https://juliahub.com/docs/General/Neutrals/stable/deps.svg)](https://juliahub.com/ui/Packages/General/Neutrals?t=2)
 [![Coverage](https://codecov.io/gh/emmt/Neutrals.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/emmt/Neutrals.jl)
+[![deps](https://juliahub.com/docs/General/Neutrals/stable/deps.svg)](https://juliahub.com/ui/Packages/General/Neutrals?t=2)
 [![Aqua QA](https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg)](https://github.com/JuliaTesting/Aqua.jl)
 
 This package provides two singleton values, `𝟘` and `𝟙` which are the respective *neutral
