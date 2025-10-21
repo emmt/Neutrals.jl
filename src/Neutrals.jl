@@ -405,6 +405,7 @@ for (f, (g, w, Ts)) in (:(+)   => (:impl_add,    6, (:Number, :Real, :Integer, :
                         :(^)   => (:impl_pow,    2, (:Number, :Real, :Integer, :Rational,
                                                      :(Irrational{:ℯ}),
                                                      :Float16, :Float32, :Float64,
+                                                     :(Union{Float16, Float32}), # <- needed to avoid ambiguities with Julia 1.12
                                                      :Complex,
                                                      :(Complex{<:AbstractFloat}),
                                                      :(Complex{<:Integer}),

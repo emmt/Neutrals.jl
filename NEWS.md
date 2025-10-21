@@ -11,6 +11,8 @@ Versioning](https://semver.org).
 - Fix list of non-exported public methods (needed for quality testing with `Aqua.jl` and
   for Julia ≥ 1.12).
 
+- Fix ambiguity for `x^n` with `n` a neutral number (needed for Julia ≥ 1.12).
+
 - `TypeUtils.adapt_precision(T, x::Neutral) -> x` and
   `TypeUtils.get_precision(::Type{<:Neutral}) -> AbstractFloat`.
 
