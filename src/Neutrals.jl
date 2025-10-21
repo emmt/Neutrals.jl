@@ -229,6 +229,11 @@ end
 (::Type{AbstractFloat})(x::Neutral) = float(value(x))
 (::Type{T})(x::Neutral) where {T<:AbstractIrrational} = throw(InexactError(:convert, T, x))
 
+# Extend precision methods defined in `TypeUtils`.
+TypeUtils.get_precision(::Type{<:Neutral}) = AbstractFloat
+TypeUtils.adapt_precision(::Type{<:TypeUtils.Precision}, x::Neutral) = x
+TypeUtils.adapt_precision(::Type{<:TypeUtils.Precision}, ::Type{X}) where {X<:Neutral} = X
+
 #---------------------------------------------------------------------- UNARY OPERATIONS -
 
 # Extend unary `-` for neutral numbers. Unary `+`, `*`, `&`, `|`, and `xor` do not need to

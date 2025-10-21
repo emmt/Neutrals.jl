@@ -11,6 +11,9 @@ Versioning](https://semver.org).
 - Fix list of non-exported public methods (needed for quality testing with `Aqua.jl` and
   for Julia ≥ 1.12).
 
+- `TypeUtils.adapt_precision(T, x::Neutral) -> x` and
+  `TypeUtils.get_precision(::Type{<:Neutral}) -> AbstractFloat`.
+
 
 ## Version 0.3.3 (2025-06-20)
 

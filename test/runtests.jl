@@ -316,6 +316,15 @@ end
         end
     end
 
+    @testset "Precision of $x" for x in instances(Neutral)
+        @test @inferred(get_precision(x)) == AbstractFloat
+        @test @inferred(get_precision(typeof(x))) == AbstractFloat
+        @test @inferred(adapt_precision(Float32, x)) === x
+        @test @inferred(adapt_precision(Float64, x)) === x
+        @test @inferred(adapt_precision(Float32, typeof(x))) === typeof(x)
+        @test @inferred(adapt_precision(Float64, typeof(x))) === typeof(x)
+    end
+
     @testset "Promote rules" begin
         @test promote(true,  ZERO) === (true,  false)
         @test promote(false, ZERO) === (false, false)
