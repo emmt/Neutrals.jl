@@ -4,7 +4,10 @@ This page describes the most important changes in `Neutrals`. The format is base
 a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic
 Versioning](https://semver.org).
 
-## Unreleased
+## Version 0.3.4 (2025-10-21)
+
+This new minor version improves compatibility with Julia 1.12 and extends precision methods
+of the [`TypeUtils`](https://github.com/emmt/TypeUtils.jl) package.
 
 ### Fixed
 
