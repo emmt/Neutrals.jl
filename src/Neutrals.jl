@@ -16,7 +16,7 @@ using TypeUtils: @public
 @public value,
         type_common, type_signed,
         impl_add, impl_sub, impl_mul, impl_div, impl_pow, impl_inv,
-        impl_eq, impl_lt, impl_le, cmp_impl, impl_isless,
+        impl_eq, impl_lt, impl_le, impl_cmp, impl_isless,
         impl_tdv, impl_rem, impl_mod,
         impl_lshft, impl_rshft, impl_urshft,
         impl_or, impl_and, impl_xor,

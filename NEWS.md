@@ -4,6 +4,14 @@ This page describes the most important changes in `Neutrals`. The format is base
 a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic
 Versioning](https://semver.org).
 
+## Unreleased
+
+### Fixed
+
+- Fix list of non-exported public methods (needed for quality testing with `Aqua.jl` and
+  for Julia ≥ 1.12).
+
+
 ## Version 0.3.3 (2025-06-20)
 
 This version is the first official release.
