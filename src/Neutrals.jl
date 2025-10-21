@@ -13,14 +13,14 @@ export Neutral, ZERO, ONE
 
 using TypeUtils
 using TypeUtils: @public
-@public value
-@public type_common type_signed
-@public impl_add impl_sub impl_mul impl_div impl_pow impl_inv
-@public impl_eq impl_lt impl_le impl_cmp impl_isless
-@public impl_tdv impl_rem impl_mod
-@public impl_lshft impl_rshft impl_urshft
-@public impl_or impl_and impl_xor
-@public is_dimensionless
+@public value,
+        type_common, type_signed,
+        impl_add, impl_sub, impl_mul, impl_div, impl_pow, impl_inv,
+        impl_eq, impl_lt, impl_le, cmp_impl, impl_isless,
+        impl_tdv, impl_rem, impl_mod,
+        impl_lshft, impl_rshft, impl_urshft,
+        impl_or, impl_and, impl_xor,
+        is_dimensionless
 
 if !isdefined(Base, :get_extension)
     using Requires
