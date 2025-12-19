@@ -281,6 +281,20 @@ end
         @test widen(typeof(x)) === typeof(x)
     end
 
+    @testset "Traits" begin
+        @test Neutrals.is_static_number(pi) === true
+        @test Neutrals.is_static_number(typeof(pi)) === true
+        @test Neutrals.is_static_number(3.14) === false
+        @test Neutrals.is_static_number(typeof(3.14)) === false
+        @test Neutrals.is_static_number(ZERO) === true
+        @test Neutrals.is_static_number(typeof(ZERO)) === true
+        @test Neutrals.is_static_number(ONE) === true
+        @test Neutrals.is_static_number(typeof(ONE)) === true
+        @test Neutrals.is_static_number(-ONE) === true
+        @test Neutrals.is_static_number(typeof(-ONE)) === true
+        @test Neutrals.is_static_number(complex(ONE, ONE)) === true
+    end
+
     @testset "$f($x,$y)" for f in (flipsign, copysign), x in instances(Neutral), y in  instances(Neutral)
         @test f(x, y) === Neutral(f(Int(x), Int(y)))
     end
@@ -960,6 +974,11 @@ end
         x = 3kg
         @test Neutrals.is_dimensionless(x) == false
         @test Neutrals.is_dimensionless(x/g) == true
+        @test Neutrals.is_static_number(typeof(x)) == false
+        @test Neutrals.is_static_number(0*unit(x)) == false
+        @test Neutrals.is_static_number(ZERO*unit(x)) == true
+        @test Neutrals.is_static_number(typeof(ONE*unit(x))) == true
+        @test Neutrals.is_static_number(-ONE*unit(x)) == true
         @test_throws Exception x + ZERO
         @test_throws Exception x + ONE
         @test_throws Exception x + (-ONE)

@@ -4,6 +4,15 @@ This page describes the most important changes in `Neutrals`. The format is base
 a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic
 Versioning](https://semver.org).
 
+## Unreleased
+
+### Added
+
+- `Neutrals.is_static_number(x)` and `Neutrals.is_static_number(typeof(x))` return whether
+  `x` is a *static number*, that is a number whose value is known at compile-time. Being a
+  static number is a *trait* that only depends on the type of `x`.
+
+
 ## Version 0.3.4 (2025-10-21)
 
 This new minor version improves compatibility with Julia 1.12 and extends precision methods

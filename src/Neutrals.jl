@@ -20,7 +20,7 @@ using TypeUtils: @public
         impl_tdv, impl_rem, impl_mod,
         impl_lshft, impl_rshft, impl_urshft,
         impl_or, impl_and, impl_xor,
-        is_dimensionless
+        is_dimensionless, is_static_number
 
 if !isdefined(Base, :get_extension)
     using Requires

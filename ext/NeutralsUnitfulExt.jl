@@ -6,7 +6,7 @@ else
     using ..Neutrals, ..Unitful
 end
 
-using .Neutrals: is_dimensionless
+using .Neutrals: is_dimensionless, is_static_number
 using .Unitful: AbstractQuantity, Quantity, NoDims, unit, ustrip
 
 # Preserve units in multiplication and division.
@@ -27,6 +27,8 @@ Neutrals.impl_div(::Val{1}, x::Neutral, y::AbstractArray{<:AbstractQuantity}) =
 
 Neutrals.is_dimensionless(::Type{<:AbstractQuantity}) = false
 Neutrals.is_dimensionless(::Type{<:AbstractQuantity{<:Any,NoDims}}) = true
+
+Neutrals.is_static_number(::Type{<:AbstractQuantity{T}}) where {T} = is_static_number(T)
 
 # Override base methods to call corresponding implementation for binary operations
 # involving a quantity and a neutral number.
