@@ -366,6 +366,41 @@ unit of `x`.
 `y` is a neutral number.
 
 
+## Macros
+
+The macro `@dispatch_on_value sym expr` generates code that dispatches expression `expr`
+based on the run-time value of the symbol `sym`.
+
+For example:
+
+```julia
+function xpby!(dst::AbstractArray, x::AbstractArray, β::Number, y::AbstractArray)
+    @assert axes(dst) == axes(x) == axes(y)
+    @dispatch_on_value β unsafe_xpby!(dst, x, β, y)
+    return dst
+end
+function unsafe_xpby!(dst::AbstractArray, x::AbstractArray, β::Number, y::AbstractArray)
+    @inbounds @simd for i in eachindex(dst, x, y)
+        dst[i] = x[i] + β*y[i]
+    end
+    nothing
+end
+```
+
+Above, the `@dispatch_on_value ...` statement expands to (with comments removed):
+
+```julia
+if !Neutrals.is_static_number(β) && Base.iszero(β)
+    unsafe_xpby!(dst, α, x, Neutrals.Neutral{0}()*TypeUtils.units_of(β), y)
+elseif !Neutrals.is_static_number(β) && β == Base.oneunit(β)
+    unsafe_xpby!(dst, α, x, Neutrals.Neutral{1}()*TypeUtils.units_of(β), y)
+elseif !Neutrals.is_static_number(β) && TypeUtils.is_signed(β) && β == -Base.oneunit(β)
+    unsafe_xpby!(dst, α, x, Neutrals.Neutral{-1}()*TypeUtils.units_of(β), y)
+else
+    unsafe_xpby!(dst, α, x, β, y)
+end
+```
+
 ## Related Packages
 
 - In base Julia, `false` behaves as a strong zero when multiplied by a float. Moreover it

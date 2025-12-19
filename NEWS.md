@@ -12,6 +12,11 @@ Versioning](https://semver.org).
   `x` is a *static number*, that is a number whose value is known at compile-time. Being a
   static number is a *trait* that only depends on the type of `x`.
 
+- `Neutrals.recode` and `Neutrals.recode!` to substitute symbols in expressions.
+
+- Macro `@dispatch_on_value sym expr` to generate code that dispatches expression `expr`
+  based on the run-time value of the symbol `sym`.
+
 
 ## Version 0.3.4 (2025-10-21)
 

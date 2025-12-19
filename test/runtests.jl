@@ -1123,6 +1123,12 @@ end
         @test Complex(3//2, ZERO) === complex(3//2, ZERO) === 3//2 + ZERO*im   === 3//2
     end
 
+    @testset "Macros" begin
+        ex = @macroexpand Neutrals.@dispatch_on_value β unsafe_xpby!(dst, x, β, y)
+        @test ex isa Expr
+        @test ex.head == :if
+    end
+
     if VERSION ≥ v"1.6"
         include("aqua.jl")
     end
