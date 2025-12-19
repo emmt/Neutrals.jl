@@ -2,11 +2,12 @@ module NeutralsUnitfulExt
 
 if isdefined(Base, :get_extension)
     using Neutrals, Unitful
-    using Unitful: AbstractQuantity, Quantity, NoDims, unit, ustrip
 else
     using ..Neutrals, ..Unitful
-    using ..Unitful: AbstractQuantity, Quantity, NoDims, unit, ustrip
 end
+
+using .Neutrals: is_dimensionless
+using .Unitful: AbstractQuantity, Quantity, NoDims, unit, ustrip
 
 # Preserve units in multiplication and division.
 Neutrals.impl_mul(::Val{1}, x::Neutral{0}, y::AbstractQuantity) = x*unit(y)
