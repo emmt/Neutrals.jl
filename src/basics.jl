@@ -181,9 +181,9 @@ Base.widen(::Type{T}) where {T<:Neutral} = T
     Neutrals.type_common(x) -> T
     Neutrals.type_common(typeof(x)) -> T
 
-yield the dimensionless type `T` to convert a neutral number operand in common binary
-operations (additions, subtractions, and comparisons) when the other operand is of the
-type of `x`.
+Return the dimensionless type `T` to convert a neutral number operand in common binary
+operations (additions, subtractions, and comparisons) when the other operand is of the type
+of `x`.
 
 See also [`Neutrals.type_signed`](@ref), [`Neutrals.impl_add`](@ref),
 [`Neutrals.impl_sub`](@ref), [`Neutrals.impl_eq`](@ref), [`Neutrals.impl_lt`](@ref),
@@ -203,10 +203,10 @@ _type_common(::Type{BigFloat}) = Clong # see `base/mpfr.jl`
     Neutrals.type_signed(x) -> T
     Neutrals.type_signed(typeof(x)) -> T
 
-yield the dimensionless type `T` to convert a neutral number operand in some binary
-operations (quotient or remainder of truncated division, and modulo) when the other
-operand is of the type of `x` and when the signedness of the neutral number must be
-preserved to reflect the usual behavior of the binary operation in Julia.
+Return the dimensionless type `T` to convert a neutral number operand in some binary
+operations (quotient or remainder of truncated division, and modulo) when the other operand
+is of the type of `x` and when the signedness of the neutral number must be preserved to
+reflect the usual behavior of the binary operation in Julia.
 
 See also [`Neutrals.type_common`](@ref), [`Neutrals.impl_tdv`](@ref),
 [`Neutrals.impl_rem`](@ref), and [`Neutrals.impl_mod`](@ref).

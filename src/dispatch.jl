@@ -116,7 +116,7 @@ Base.eltype(::Type{Dispatch{T}}) where {T} = T
 """
     Neutrals.dispatch(x)
 
-May mark `x` as a candidate for optimization on its value (e.g., with the
+May mark `x` as a candidate for specialization on its value (e.g., with the
 [`@dispatch_on_value`](@ref) macro). If `x` is a static number (see
 [`Neutrals.is_static_number`](@ref)), `x` is returned unchanged.
 
