@@ -25,11 +25,11 @@ end
 where the `@dispatch_on_value ...` statement expands to (with comments removed):
 
 ```julia
-if !Neutrals.is_static_number(β) && Base.iszero(β)
+if !Neutrals.is_static_number(β) && TypeUtils.unitless(β) == Neutrals.Neutral{0}()
     unsafe_xpby!(dst, α, x, Neutrals.Neutral{0}()*TypeUtils.units_of(β), y)
-elseif !Neutrals.is_static_number(β) && β == Base.oneunit(β)
+elseif !Neutrals.is_static_number(β) && TypeUtils.unitless(β) == Neutrals.Neutral{1}()
     unsafe_xpby!(dst, α, x, Neutrals.Neutral{1}()*TypeUtils.units_of(β), y)
-elseif !Neutrals.is_static_number(β) && TypeUtils.is_signed(β) && β == -Base.oneunit(β)
+elseif !Neutrals.is_static_number(β) && TypeUtils.is_signed(β) && TypeUtils.unitless(β) == Neutrals.Neutral{-1}()
     unsafe_xpby!(dst, α, x, Neutrals.Neutral{-1}()*TypeUtils.units_of(β), y)
 else
     unsafe_xpby!(dst, α, x, β, y)
@@ -44,11 +44,11 @@ This can be checked with `@macroexpand`:
 
 """
 macro dispatch_on_value(sym::Union{Symbol,QuoteNode}, expr::Expr)
-    esc(:(if !Neutrals.is_static_number($sym) && Base.isequal($sym, Base.zero($sym))
+    esc(:(if !Neutrals.is_static_number($sym) && TypeUtils.unitless($sym) == Neutrals.Neutral{0}()
               $(recode(expr, sym => :(Neutrals.Neutral{0}()*TypeUtils.units_of($sym))))
-          elseif !Neutrals.is_static_number($sym) && Base.isequal($sym, Base.oneunit($sym))
+          elseif !Neutrals.is_static_number($sym) && TypeUtils.unitless($sym) == Neutrals.Neutral{1}()
               $(recode(expr, sym => :(Neutrals.Neutral{1}()*TypeUtils.units_of($sym))))
-          elseif !Neutrals.is_static_number($sym) && TypeUtils.is_signed($sym) && Base.isequal($sym, -Base.oneunit($sym))
+          elseif !Neutrals.is_static_number($sym) && TypeUtils.is_signed($sym) &&TypeUtils.unitless($sym) == Neutrals.Neutral{-1}()
               $(recode(expr, sym => :(Neutrals.Neutral{-1}()*TypeUtils.units_of($sym))))
           else
               $expr
