@@ -239,6 +239,28 @@ Base.promote_rule(::Type{Bool}, ::Type{<:Neutral}) = Bool
 Base.promote_rule(::Type{Bool}, ::Type{<:Neutral{-1}}) = Int
 Base.promote_rule(::Type{<:Neutral{-1}}, ::Type{Bool}) = Int
 
+"""
+    Neutrals.adapt_multiplier_precision(α, x)
+    Neutrals.adapt_multiplier_precision(α, typeof(x))
+    Neutrals.adapt_multiplier_precision(eltype(x), α)
+
+Adapt the precision of the multiplier `α` to compute `α*x` with `x` a numerical array. The
+returned number has the same precision as type `T` of the elements of array `x`. If `α` is a
+static number (see [`Neutrals.is_static_number`](@ref)) or if `T` has no concrete
+floating-point precision, `α` is returned unchanged.
+
+"""
+adapt_multiplier_precision(α::Number, x::AbstractArray) =
+    adapt_multiplier_precision(α, typeof(x))
+adapt_multiplier_precision(α::Number, ::Type{T}) where {T<:AbstractArray} =
+    adapt_multiplier_precision(eltype(T), α)
+
+adapt_multiplier_precision(::Type{T}, α::Number) where {T<:Number} =
+    adapt_multiplier_precision(get_precision(T)::AbstractFloat, α)
+
+adapt_multiplier_precision(::Type{T}, α::Number) where {T<:AbstractFloat} =
+    (is_static_number(α) || !isconcretetype(T)) ? α : convert_floating_point_type(T, α)
+
 #---------------------------------------------------------------------------------- Ranges -
 
 # Considering the specific cases `step = 𝟘` and `start = step = stop = -𝟙` is to avoid

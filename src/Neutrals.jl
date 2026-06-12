@@ -16,6 +16,7 @@ using TypeUtils: @public
 @public(
     @dispatch_on_value,
     Dispatch,
+    adapt_multiplier_precision,
     dispatch,
     impl_add,
     impl_and,
