@@ -38,7 +38,6 @@ using TypeUtils: @public
     impl_tdv,
     impl_urshft,
     impl_xor,
-    is_dimensionless,
     is_static_number,
     recode!,
     recode,
@@ -55,6 +54,8 @@ include("types.jl")
 include("dispatch.jl")
 include("basics.jl")
 include("binary-operations.jl")
+
+@deprecate is_dimensionless(x) TypeUtils.is_unitless(x) false
 
 function __init__()
     @static if !isdefined(Base, :get_extension)

@@ -34,7 +34,7 @@ struct LengthInMeters{T<:Real} <: Number
     len::T
 end
 
-Neutrals.is_dimensionless(::Type{<:LengthInMeters}) = false
+TypeUtils.is_unitless(::Type{<:LengthInMeters}) = false
 Base.zero(::Type{LengthInMeters{T}}) where {T} = LengthInMeters(zero(T))
 Base.one(::Type{LengthInMeters{T}}) where {T} = one(T)
 Base.oneunit(::Type{LengthInMeters{T}}) where {T} = LengthInMeters(oneunit(T))
@@ -44,7 +44,7 @@ struct DimensionlessNumber{T<:Real} <: Number
     val::T
 end
 
-Neutrals.is_dimensionless(::Type{<:DimensionlessNumber}) = true
+TypeUtils.is_unitless(::Type{<:DimensionlessNumber}) = true
 Base.zero(::Type{DimensionlessNumber{T}}) where {T} = DimensionlessNumber(zero(T))
 Base.one(::Type{DimensionlessNumber{T}}) where {T} = DimensionlessNumber(one(T))
 Base.oneunit(::Type{DimensionlessNumber{T}}) where {T} = DimensionlessNumber(oneunit(T))
@@ -972,8 +972,6 @@ end
 
     @testset "Operation with Unitful quantities" begin
         x = 3kg
-        @test Neutrals.is_dimensionless(x) == false
-        @test Neutrals.is_dimensionless(x/g) == true
         @test Neutrals.is_static_number(typeof(x)) == false
         @test Neutrals.is_static_number(0*unit(x)) == false
         @test Neutrals.is_static_number(ZERO*unit(x)) == true

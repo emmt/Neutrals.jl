@@ -55,20 +55,6 @@ value(::Neutral{x}) where x = x
 value(::Type{<:Neutral{x}}) where x = x
 
 """
-    Neutrals.is_dimensionless(x)
-    Neutrals.is_dimensionless(typeof(x))
-
-Return whether number `x` is dimensionless. This is a trait which only depends on the type
-of `x`.
-
-By default, only sub-types of `Real` and `Complex` are considered as being dimensionless.
-This method must be extended for other numbers.
-
-"""
-is_dimensionless(x::Number) = is_dimensionless(typeof(x))
-is_dimensionless(::Type{<:BareNumber}) = true
-
-"""
     Neutrals.is_static_number(x)
     Neutrals.is_static_number(typeof(x))
 

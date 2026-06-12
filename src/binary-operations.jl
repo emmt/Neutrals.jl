@@ -164,7 +164,7 @@ number, that is for `w::Val{2}`.
 
 """
 impl_add(::Val{2}, x::BareNumber, ::Neutral{0}) = x
-impl_add(::Val{2}, x::Number, ::Neutral{ 0}) = is_dimensionless(x) ? x : throw_add_dimensionful_and_zero()
+impl_add(::Val{2}, x::Number, ::Neutral{ 0}) = is_unitless(x) ? x : throw_add_dimensionful_and_zero()
 impl_add(::Val{2}, x::Number, ::Neutral{ 1}) = x + convert(type_common(x), 1)
 impl_add(::Val{2}, x::Number, ::Neutral{-1}) = x - convert(type_common(x), 1)
 
@@ -179,12 +179,12 @@ number. See [`Neutrals.impl_add`](@ref) for the interpretation of `w`.
 
 """
 impl_sub(::Val{1}, x::Neutral{ 0}, y::BareNumber) = -y
-impl_sub(::Val{1}, x::Neutral{ 0}, y::Number) = is_dimensionless(y) ? -y : throw_sub_dimensionful_and_zero()
+impl_sub(::Val{1}, x::Neutral{ 0}, y::Number) = is_unitless(y) ? -y : throw_sub_dimensionful_and_zero()
 impl_sub(::Val{1}, x::Neutral{ 1}, y::Number) = convert(type_common(y), 1) - y
 impl_sub(::Val{1}, x::Neutral{-1}, y::Number) = -convert(type_common(y), 1) - y
 
 impl_sub(::Val{2}, x::BareNumber, y::Neutral{0}) = x
-impl_sub(::Val{2}, x::Number, y::Neutral{ 0}) = is_dimensionless(x) ? x : throw_sub_dimensionful_and_zero()
+impl_sub(::Val{2}, x::Number, y::Neutral{ 0}) = is_unitless(x) ? x : throw_sub_dimensionful_and_zero()
 impl_sub(::Val{2}, x::Number, y::Neutral{ 1}) = x - convert(type_common(x), 1)
 impl_sub(::Val{2}, x::Number, y::Neutral{-1}) = x + convert(type_common(x), 1)
 
@@ -340,7 +340,7 @@ This method can be overridden by specializing it when the second operand is a ne
 number, that is for for `w::Val{2}`.
 
 """
-impl_eq(::Val{2}, x::Number, ::Neutral{ 0}) = is_dimensionless(x) && iszero(x)
+impl_eq(::Val{2}, x::Number, ::Neutral{ 0}) = is_unitless(x) && iszero(x)
 impl_eq(::Val{2}, x::Number, ::Neutral{ 1}) = isone(x)
 impl_eq(::Val{2}, x::Number, ::Neutral{-1}) = x == -convert(type_common(x), 1)
  # NOTE We are assuming that `isone(x)` is not slower than `x == one(x)` or `x ==
