@@ -368,9 +368,6 @@ unit of `x`.
 Non-exported public function `Neutrals.dispatch` and type `Neutrals.Dispatch` are intended
 to mark numbers that may lead to code specialization based on their values.
 
-Non-exported public function `Neutrals.adapt_multiplier_precision(α, x)` to adapt the
-precision of a scalar numerical multiplier `α` to that of the other operand `x`.
-
 
 ## Macros
 

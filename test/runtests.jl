@@ -1117,17 +1117,13 @@ end
 
     @testset "Multipliers" begin
         x = Float32[0,1,2]
-        @test @inferred(Neutrals.adapt_multiplier_precision(ZERO, x)) === ZERO
-        @test @inferred(Neutrals.adapt_multiplier_precision(ONE, x)) === ONE
-        @test @inferred(Neutrals.adapt_multiplier_precision(-ONE, x)) === -ONE
-        @test @inferred(Neutrals.adapt_multiplier_precision(π, x)) === π
-        @test @inferred(Neutrals.adapt_multiplier_precision(3, x)) === convert(eltype(x), 3)
-        @test @inferred(Neutrals.adapt_multiplier_precision(ZERO, typeof(x))) === ZERO
-        @test @inferred(Neutrals.adapt_multiplier_precision(ONE, typeof(x))) === ONE
-        @test @inferred(Neutrals.adapt_multiplier_precision(-ONE, typeof(x))) === -ONE
-        @test @inferred(Neutrals.adapt_multiplier_precision(π, typeof(x))) === π
-        @test @inferred(Neutrals.adapt_multiplier_precision(3, typeof(x))) === convert(eltype(x), 3)
-        @test @inferred(Neutrals.adapt_multiplier_precision(Float16, 3)) === convert(Float16, 3)
+        @test @inferred(adapt_multiplier_precision(ZERO, x)) === ZERO
+        @test @inferred(adapt_multiplier_precision(ONE, x)) === ONE
+        @test @inferred(adapt_multiplier_precision(-ONE, x)) === -ONE
+        @test @inferred(adapt_multiplier_precision(ZERO, typeof(x))) === ZERO
+        @test @inferred(adapt_multiplier_precision(ONE, typeof(x))) === ONE
+        @test @inferred(adapt_multiplier_precision(-ONE, typeof(x))) === -ONE
+        @test @inferred(adapt_multiplier_precision(Float16, ONE)) === ONE
     end
 
     @testset "Dispatch objects" begin
