@@ -6,6 +6,10 @@ Versioning](https://semver.org).
 
 ## Unreleased
 
+### Breaking changes
+
+- `Neutrals` package now requires `TypeUtils` ≥ 2.
+
 ### Changed
 
 - Non-exported `Neutrals.is_dimensionless` has been deprecated and replaced by
