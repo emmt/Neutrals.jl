@@ -15,6 +15,9 @@ Versioning](https://semver.org).
 - Non-exported `Neutrals.is_dimensionless` has been deprecated and replaced by
   `TypeUtils.is_unitless`.
 
+- Non-exported `Neutrals.is_static_number` has been replaced by
+  `TypeUtils.is_static_number`.
+
 ### Added
 
 - Non-exported public function `Neutrals.dispatch` and type `Neutrals.Dispatch` to mark

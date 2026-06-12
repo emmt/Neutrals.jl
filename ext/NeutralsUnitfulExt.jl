@@ -6,7 +6,6 @@ else
     using ..Neutrals, ..Unitful
 end
 
-using .Neutrals: is_static_number
 using .Unitful: AbstractQuantity, Quantity, NoDims, unit, ustrip
 
 # Preserve units in multiplication and division.
@@ -24,8 +23,6 @@ Neutrals.impl_div(::Val{1}, x::Neutral, y::AbstractArray{<:AbstractQuantity}) =
 #
 #Neutrals._impl_div(x::Neutral{0}, y::AbstractArray{<:AbstractQuantity}) =
 #    similar(y, typeof(x/unit(eltype(y))))
-
-Neutrals.is_static_number(::Type{<:AbstractQuantity{T}}) where {T} = is_static_number(T)
 
 # Override base methods to call corresponding implementation for binary operations
 # involving a quantity and a neutral number.

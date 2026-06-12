@@ -54,26 +54,6 @@ Return the value associated with the neutral number `x`.
 value(::Neutral{x}) where x = x
 value(::Type{<:Neutral{x}}) where x = x
 
-"""
-    Neutrals.is_static_number(x)
-    Neutrals.is_static_number(typeof(x))
-
-Return whether `x` is a *static number*, that is a number whose value is known considering
-its type. Being a static number is a *trait* that only depends on the type of `x`.
-
-!!! note
-    Beware that the result of `is_static_number` shall always only depend on the type of
-    `x`. Hence, the function may return `false` even though the value of `x` is known at
-    compile-time, e.g. when `x` is a literal number or a constant.
-
-"""
-is_static_number(x::Number) = is_static_number(typeof(x))
-is_static_number(::Type{<:Number}) = false
-is_static_number(::Type{<:Neutral}) = true
-is_static_number(::Type{<:Irrational}) = true
-is_static_number(::Type{<:Rational{T}}) where {T} = is_static_number(T)
-is_static_number(::Type{<:Complex{T}}) where {T} = is_static_number(T)
-
 # Conversion rules for bare numeric types. No needs to extend `Base.convert` because
 # `Base.convert(T,x)` amounts to calling `T(x)` for any numeric type `T`.
 for T in (Bool,
@@ -96,6 +76,7 @@ end
 (::Type{T})(x::Neutral) where {T<:AbstractIrrational} = throw(InexactError(:convert, T, x))
 
 # Extend precision methods defined in `TypeUtils`.
+TypeUtils.is_static_number(::Type{<:Neutral}) = true
 TypeUtils.get_precision(::Type{<:Neutral}) = AbstractFloat
 TypeUtils.adapt_precision(::Type{<:TypeUtils.Precision}, x::Neutral) = x
 TypeUtils.adapt_precision(::Type{<:TypeUtils.Precision}, ::Type{X}) where {X<:Neutral} = X

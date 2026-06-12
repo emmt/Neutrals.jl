@@ -38,7 +38,6 @@ using TypeUtils: @public
     impl_tdv,
     impl_urshft,
     impl_xor,
-    is_static_number,
     recode!,
     recode,
     type_common,
