@@ -13,22 +13,45 @@ export Neutral, ZERO, ONE
 
 using TypeUtils
 using TypeUtils: @public
-@public @dispatch_on_value, value,
-        type_common, type_signed,
-        impl_add, impl_sub, impl_mul, impl_div, impl_pow, impl_inv,
-        impl_eq, impl_lt, impl_le, impl_cmp, impl_isless,
-        impl_tdv, impl_rem, impl_mod,
-        impl_lshft, impl_rshft, impl_urshft,
-        impl_or, impl_and, impl_xor,
-        is_dimensionless, is_static_number,
-        recode, recode!
+@public(
+    @dispatch_on_value,
+    Dispatch,
+    dispatch,
+    impl_add,
+    impl_and,
+    impl_cmp,
+    impl_div,
+    impl_eq,
+    impl_inv,
+    impl_isless,
+    impl_le,
+    impl_lshft,
+    impl_lt,
+    impl_mod,
+    impl_mul,
+    impl_or,
+    impl_pow,
+    impl_rem,
+    impl_rshft,
+    impl_sub,
+    impl_tdv,
+    impl_urshft,
+    impl_xor,
+    is_dimensionless,
+    is_static_number,
+    recode!,
+    recode,
+    type_common,
+    type_signed,
+    value,
+)
 
 if !isdefined(Base, :get_extension)
     using Requires
 end
 
 include("types.jl")
-include("macros.jl")
+include("dispatch.jl")
 include("basics.jl")
 include("binary-operations.jl")
 

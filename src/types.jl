@@ -127,3 +127,8 @@ const UnsignedNumber = Union{UnsignedReal,UnsignedComplex}
 
 # `BareNumbers` are dimensionless.
 const BareNumber = Union{Real,Complex}
+
+struct Dispatch{T}
+    value::T
+    Dispatch(x::T) where {T} = new{T}(x)
+end

@@ -90,3 +90,36 @@ function recode!(ex::Expr, (a, b)::Pair)
 end
 _symbolic(x::AbstractString) = Symbol(x)
 _symbolic(x::Any) = x
+
+"""
+    obj = Neutrals.Dispatch(val)
+
+Return a simple immutable object storing the value `val` and for which code may be
+specialized.
+
+A `Dispatch` object may be indexed to retrieve the value: `obj[]` yields `val`.
+
+The element type of a `Dispatch` object is that of the stored value: `eltype(obj)` and
+`eltype(typeof(obj))` both yield `typeof(val)`.
+
+!!! warning
+    Directly calling the constructor is discouraged, it is better to call
+    [`Neutrals.dispatch(val)`](@ref Neutrals) which filters values (like static numbers) for
+    which no specific optimization is needed.
+
+"""
+Dispatch(x::Dispatch) = x
+
+Base.getindex(x::Dispatch) = getfield(x, :value)
+Base.eltype(::Type{Dispatch{T}}) where {T} = T
+
+"""
+    Neutrals.dispatch(x)
+
+May mark `x` as a candidate for optimization on its value (e.g., with the
+[`@dispatch_on_value`](@ref) macro). If `x` is a static number (see
+[`Neutrals.is_static_number`](@ref)), `x` is returned unchanged.
+
+"""
+dispatch(x::Dispatch) = x
+dispatch(x::Number) = is_static_number(typeof(x)) ? x : Dispatch(x)

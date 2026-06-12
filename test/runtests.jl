@@ -1123,6 +1123,29 @@ end
         @test Complex(3//2, ZERO) === complex(3//2, ZERO) === 3//2 + ZERO*im   === 3//2
     end
 
+    @testset "Dispatch objects" begin
+        @test @inferred(Neutrals.dispatch(ZERO)) === ZERO
+        @test @inferred(Neutrals.dispatch(ONE)) === ONE
+        @test @inferred(Neutrals.dispatch(-ONE)) === -ONE
+        @test @inferred(Neutrals.dispatch(π)) === π
+        val = 0.0f0
+        obj = @inferred(Neutrals.dispatch(val))
+        @test obj isa Neutrals.Dispatch{typeof(val)}
+        @test eltype(obj) === typeof(val)
+        @test eltype(typeof(obj)) === typeof(val)
+        @test obj[] === val
+        @test @inferred(Neutrals.dispatch(obj)) === obj
+        @test @inferred(Neutrals.Dispatch(obj)) === obj
+        val = 1//2
+        obj = @inferred(Neutrals.dispatch(val))
+        @test obj isa Neutrals.Dispatch{typeof(val)}
+        @test eltype(obj) === typeof(val)
+        @test eltype(typeof(obj)) === typeof(val)
+        @test obj[] === val
+        @test @inferred(Neutrals.dispatch(obj)) === obj
+        @test @inferred(Neutrals.Dispatch(obj)) === obj
+    end
+
     @testset "Macros" begin
         ex = @macroexpand Neutrals.@dispatch_on_value β unsafe_xpby!(dst, x, β, y)
         @test ex isa Expr

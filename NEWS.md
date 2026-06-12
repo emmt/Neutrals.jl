@@ -4,6 +4,13 @@ This page describes the most important changes in `Neutrals`. The format is base
 a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic
 Versioning](https://semver.org).
 
+## Unreleased
+
+### Added
+
+- Non-exported public function `Neutrals.dispatch` and type `Neutrals.Dispatch` to mark
+  numbers that may lead to code specialization based on their values.
+
 ## Version 0.3.5 (2025-12-19)
 
 ### Added
