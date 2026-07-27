@@ -26,13 +26,13 @@ where the `@dispatch_on_value ...` statement expands to (with comments removed):
 
 ```julia
 if !TypeUtils.is_static_number(β) && TypeUtils.unitless(β) == Neutrals.Neutral{0}()
-    unsafe_xpby!(dst, α, x, Neutrals.Neutral{0}()*TypeUtils.units_of(β), y)
+    unsafe_xpby!(dst, x, Neutrals.Neutral{0}()*TypeUtils.units_of(β), y)
 elseif !TypeUtils.is_static_number(β) && TypeUtils.unitless(β) == Neutrals.Neutral{1}()
-    unsafe_xpby!(dst, α, x, Neutrals.Neutral{1}()*TypeUtils.units_of(β), y)
+    unsafe_xpby!(dst, x, Neutrals.Neutral{1}()*TypeUtils.units_of(β), y)
 elseif !TypeUtils.is_static_number(β) && TypeUtils.is_signed(β) && TypeUtils.unitless(β) == Neutrals.Neutral{-1}()
-    unsafe_xpby!(dst, α, x, Neutrals.Neutral{-1}()*TypeUtils.units_of(β), y)
+    unsafe_xpby!(dst, x, Neutrals.Neutral{-1}()*TypeUtils.units_of(β), y)
 else
-    unsafe_xpby!(dst, α, x, β, y)
+    unsafe_xpby!(dst, x, β, y)
 end
 ```
 

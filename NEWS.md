@@ -10,6 +10,9 @@ Versioning](https://semver.org).
 
 - `Base.checked_abs(x::Neutral)` is implemented.
 
+### Fixed
+
+- Some documentation has been fixed and updated.
 
 ## Version 0.4.0 (2026-06-11)
 

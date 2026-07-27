@@ -371,14 +371,24 @@ to mark numbers that may lead to code specialization based on their values.
 
 ## Macros
 
-The macro `@dispatch_on_value sym expr` generates code that dispatches expression `expr`
-based on the run-time value of the symbol `sym`.
+The macro `Neutrals.@dispatch_on_value sym expr` generates code that dispatches expression
+`expr` based on the run-time value of the symbol `sym`. This macro may be used with
+`Neutrals.Dispatch` which marks an object whose value may lead to optimized code.
 
-For example:
+As an example, below is an efficient implementation of `xpby!(dst, x, β, y)` which
+overwrites `dst` with `x + β*y`:
 
 ```julia
+using Neutrals: @dispatch_on_value, Dispatch
+using TypeUtils: adapt_multiplier_precsion
 function xpby!(dst::AbstractArray, x::AbstractArray, β::Number, y::AbstractArray)
     @assert axes(dst) == axes(x) == axes(y)
+    _β = adapt_multiplier_precision(β, eltype(y))
+    return unsafe_xpby!(dst, x, Dispatch(_β), y)
+end
+function unsafe_xpby!(dst::AbstractArray, x::AbstractArray,
+                      _β::Dispatch{<:Number}, y::AbstractArray)
+    β = _β[] # fetch value of multiplier
     @dispatch_on_value β unsafe_xpby!(dst, x, β, y)
     return dst
 end
@@ -386,21 +396,30 @@ function unsafe_xpby!(dst::AbstractArray, x::AbstractArray, β::Number, y::Abstr
     @inbounds @simd for i in eachindex(dst, x, y)
         dst[i] = x[i] + β*y[i]
     end
-    nothing
 end
 ```
 
-Above, the `@dispatch_on_value ...` statement expands to (with comments removed):
+In a 1st stage, `xpby!` checks that arrays have compatible sizes (so that these checks are
+not necessary in the `unsafe_axpby!` methods), adapts the precision of the multiplier `β` to
+that of the elements of `y` (so that no other conversion shall be necessary when evaluating
+`β*y[i]`), and call the auxiliary method `unsafe_axpby!` with the multiplier marked by
+`Dispatch`. In a 2nd stage, the macro `Neutrals.@dispatch_on_value` is used to generate
+specialized code based on the value of the multiplier `β`. Optimization amounts to replacing
+`β` by one of the neutral number, if possible and preserving units. In a 3rd stage, generic
+code to perform the operation is executed. In this latter stage, the multiplier `β` is left
+unchanged and is considered as a simple scalar value.
+
+Above, the `Neutrals.@dispatch_on_value ...` statement expands to (with comments removed):
 
 ```julia
 if !TypeUtils.is_static_number(β) && TypeUtils.unitless(β) == Neutrals.Neutral{0}()
-    unsafe_xpby!(dst, α, x, Neutrals.Neutral{0}()*TypeUtils.units_of(β), y)
+    unsafe_xpby!(dst, x, Neutrals.Neutral{0}()*TypeUtils.units_of(β), y)
 elseif !TypeUtils.is_static_number(β) && TypeUtils.unitless(β) == Neutrals.Neutral{1}()
-    unsafe_xpby!(dst, α, x, Neutrals.Neutral{1}()*TypeUtils.units_of(β), y)
+    unsafe_xpby!(dst, x, Neutrals.Neutral{1}()*TypeUtils.units_of(β), y)
 elseif !TypeUtils.is_static_number(β) && TypeUtils.is_signed(β) && TypeUtils.unitless(β) == Neutrals.Neutral{-1}()
-    unsafe_xpby!(dst, α, x, Neutrals.Neutral{-1}()*TypeUtils.units_of(β), y)
+    unsafe_xpby!(dst, x, Neutrals.Neutral{-1}()*TypeUtils.units_of(β), y)
 else
-    unsafe_xpby!(dst, α, x, β, y)
+    unsafe_xpby!(dst, x, β, y)
 end
 ```
 
