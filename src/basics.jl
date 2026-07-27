@@ -109,12 +109,12 @@ Base.sign(x::Union{Neutral{0},Neutral{1},Neutral{-1}}) = value(x)
 Base.signbit(x::NonNegativeNeutral) = false
 Base.signbit(x::Neutral) = true
 #
-for f in (:abs, :abs2, :checked_abs)
+for f in (:abs, :abs2)
     @eval begin
-        Base.$f(x::NonNegativeNeutral) = x
-        Base.$f(x::Neutral{-1}) = ONE
+        Base.$f(x::Neutral{V}) where {V} = Neutral{$f(V)}()
     end
 end
+Base.checked_abs(x::Neutral) = abs(x)
 #
 Base.angle(::NonNegativeNeutral) = ZERO
 Base.angle(::Neutral) = π
