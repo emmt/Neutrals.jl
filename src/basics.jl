@@ -48,7 +48,8 @@ end
     Neutrals.value(x)
     Neutrals.value(typeof(x))
 
-Return the value associated with the neutral number `x`.
+Return the value associated with the neutral number `x`. This *trait* only depends on the
+type of `x`.
 
 """
 value(::Neutral{x}) where x = x
