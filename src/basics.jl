@@ -108,7 +108,7 @@ Base.sign(x::Union{Neutral{0},Neutral{1},Neutral{-1}}) = value(x)
 Base.signbit(x::NonNegativeNeutral) = false
 Base.signbit(x::Neutral) = true
 #
-for f in (:abs, :abs2)
+for f in (:abs, :abs2, :checked_abs)
     @eval begin
         Base.$f(x::NonNegativeNeutral) = x
         Base.$f(x::Neutral{-1}) = ONE

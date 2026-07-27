@@ -260,6 +260,7 @@ end
         @test sign(x) === sign(Int(x))
         @test signbit(x) === signbit(Int(x))
         @test abs(x) === Neutral(abs(Int(x)))
+        @test Base.checked_abs(x) === Neutral(abs(Int(x)))
         @test abs2(x) === Neutral(abs2(Int(x)))
         @test conj(x) === x
         @test transpose(x) === x
