@@ -1124,7 +1124,9 @@ end
         @test @inferred(adapt_multiplier_precision(ZERO, typeof(x))) === ZERO
         @test @inferred(adapt_multiplier_precision(ONE, typeof(x))) === ONE
         @test @inferred(adapt_multiplier_precision(-ONE, typeof(x))) === -ONE
-        @test @inferred(adapt_multiplier_precision(Float16, ONE)) === ONE
+        @test @inferred(adapt_multiplier_precision(eltype(x), ZERO)) === ZERO
+        @test @inferred(adapt_multiplier_precision(eltype(x), ONE)) === ONE
+        @test @inferred(adapt_multiplier_precision(eltype(x), -ONE)) === -ONE
     end
 
     @testset "Dispatch objects" begin
