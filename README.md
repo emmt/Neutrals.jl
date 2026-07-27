@@ -37,6 +37,7 @@ Table of contents:
 * [Ranges](#ranges)
 * [Dimensionful Quantities](#dimensionful-quantities)
 * [Miscellaneous](#miscellaneous)
+* [Dispatching on value](#dispatching-on-value)
 * [Related packages](#related-packages)
 
 
@@ -369,7 +370,7 @@ Non-exported public function `Neutrals.dispatch` and type `Neutrals.Dispatch` ar
 to mark numbers that may lead to code specialization based on their values.
 
 
-## Macros
+## Dispatching on value
 
 The macro `Neutrals.@dispatch_on_value sym expr` generates code that dispatches expression
 `expr` based on the run-time value of the symbol `sym`. This macro may be used with
