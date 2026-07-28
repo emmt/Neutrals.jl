@@ -24,9 +24,9 @@
 #
 # similarly for `-`, for comparing numbers:
 #
-#     ==(x::Number, y::Number) in `basae/promotion.jl`
-#     <( x::Real, y::Real)     in `basae/promotion.jl`
-#     <=(x::Real, y::Real)     in `basae/promotion.jl`
+#     ==(x::Number, y::Number) in `base/promotion.jl`
+#     <( x::Real, y::Real)     in `base/promotion.jl`
+#     <=(x::Real, y::Real)     in `base/promotion.jl`
 #
 # and so on.
 #
