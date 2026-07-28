@@ -38,7 +38,7 @@ TypeUtils.is_unitless(::Type{<:LengthInMeters}) = false
 Base.zero(::Type{LengthInMeters{T}}) where {T} = LengthInMeters(zero(T))
 Base.one(::Type{LengthInMeters{T}}) where {T} = one(T)
 Base.oneunit(::Type{LengthInMeters{T}}) where {T} = LengthInMeters(oneunit(T))
-Base.:-(x::LengthInMeters) = DimensionlessNumber(-x.val)
+Base.:-(x::LengthInMeters) = DimensionlessNumber(-x.len)
 
 struct DimensionlessNumber{T<:Real} <: Number
     val::T
