@@ -68,23 +68,23 @@ for (f, (g, w, Ts)) in (:(+)   => (:impl_add,    6, (:Number, :Real, :Integer, :
                         :(>>>) => (:impl_urshft, 2, (:Integer, :Bool)),
                         )
     # There is always an implementation when both operands are neutral numbers.
-    @eval Base.$f(x::Neutral, y::Neutral) = $g($(Val(3)), x, y)
+    @eval Base.$f(x::Neutral, y::Neutral) = $g(x, y)
     for T in Ts
         if (w & 1) == 1
             # Implementation exists when 1st operand is a neutral number.
-            @eval Base.$f(x::Neutral, y::$T) = $g($(Val(1)), x, y)
+            @eval Base.$f(x::Neutral, y::$T) = $g(x, y)
         elseif w == 6
             # Operation is commutative and implementation exists when 2nd operand is a
             # neutral number.
-            @eval Base.$f(x::Neutral, y::$T) = $g($(Val(2)), y, x)
+            @eval Base.$f(x::Neutral, y::$T) = $g(y, x)
         end
         if (w & 2) == 2
             # Implementation exists when 2nd operand is a neutral number.
-            @eval Base.$f(x::$T, y::Neutral) = $g($(Val(2)), x, y)
+            @eval Base.$f(x::$T, y::Neutral) = $g(x, y)
         elseif w == 5
             # Operation is commutative and implementation exists when 1st operand is a
             # neutral number.
-            @eval Base.$f(x::$T, y::Neutral) = $g($(Val(1)), y, x)
+            @eval Base.$f(x::$T, y::Neutral) = $g(y, x)
         end
     end
 end
@@ -106,13 +106,8 @@ for x in instances(Neutral), y in instances(Neutral)
                    :(>>)  => :impl_rshft,
                    :(>>>) => :impl_urshft)
         r = @eval $f(value($x), value($y))
-        if r isa Bool
-            @eval $g(::Val{3}, ::$(typeof(x)), ::$(typeof(y))) = $r
-        elseif r ∈ (0, 1, -1) # returns a neutral number if possible
-            @eval $g(::Val{3}, ::$(typeof(x)), ::$(typeof(y))) = $(Neutral{r}())
-        else # otherwise returns an integer
-            @eval $g(::Val{3}, ::$(typeof(x)), ::$(typeof(y))) = $r
-        end
+        @eval $g(::$(typeof(x)), ::$(typeof(y))) =
+            $(r isa Int && r ∈ (0, 1, -1) ? Neutral{r}() : r)
     end
 
     # Division, modulo, etc.
@@ -121,22 +116,22 @@ for x in instances(Neutral), y in instances(Neutral)
                    :rem => :impl_rem,
                    :mod => :impl_mod)
         if y === ZERO
-            @eval $g(::Val{3}, ::$(typeof(x)), ::$(typeof(y))) = throw(DivideError())
+            @eval $g(::$(typeof(x)), ::$(typeof(y))) = throw(DivideError())
         else # y is ONE or -ONE
             r = if f === :(/)
                 value(x)*value(y) # x/y yields the same result as x*y when abs(y) = 1
             else
                 @eval $f(value($x), value($y))
             end
-            @eval $g(::Val{3}, ::$(typeof(x)), ::$(typeof(y))) = $(Neutral{r}())
+            @eval $g(::$(typeof(x)), ::$(typeof(y))) = $(Neutral{r}())
         end
     end
 
     # Exponentiation.
-    @eval impl_pow(::Val{3}, ::$(typeof(x)), ::$(typeof(y))) = $(y === ZERO ? ONE : x)
+    @eval impl_pow(::$(typeof(x)), ::$(typeof(y))) = $(y === ZERO ? ONE : x)
 
     # Comparison.
-    @eval impl_cmp(::Val{3}, ::$(typeof(x)), ::$(typeof(y))) = $(cmp(value(x), value(y)))
+    @eval impl_cmp(::$(typeof(x)), ::$(typeof(y))) = $(cmp(value(x), value(y)))
 end
 
 """
@@ -163,10 +158,10 @@ This method can be overridden by specializing it when the second operand is a ne
 number, that is for `w::Val{2}`.
 
 """
-impl_add(::Val{2}, x::BareNumber, ::Neutral{0}) = x
-impl_add(::Val{2}, x::Number, ::Neutral{ 0}) = is_unitless(x) ? x : throw_add_dimensionful_and_zero()
-impl_add(::Val{2}, x::Number, ::Neutral{ 1}) = x + convert(type_common(x), 1)
-impl_add(::Val{2}, x::Number, ::Neutral{-1}) = x - convert(type_common(x), 1)
+impl_add(x::BareNumber, ::Neutral{0}) = x
+impl_add(x::Number, ::Neutral{ 0}) = is_unitless(x) ? x : throw_add_dimensionful_and_zero()
+impl_add(x::Number, ::Neutral{ 1}) = x + convert(type_common(x), 1)
+impl_add(x::Number, ::Neutral{-1}) = x - convert(type_common(x), 1)
 
 @noinline throw_add_dimensionful_and_zero() =
     throw(ArgumentError("𝟘 and dimensionful quantity cannot be added"))
@@ -178,15 +173,15 @@ Implement subtraction of numbers `x` and `y` when at least one of the operands i
 number. See [`Neutrals.impl_add`](@ref) for the interpretation of `w`.
 
 """
-impl_sub(::Val{1}, x::Neutral{ 0}, y::BareNumber) = -y
-impl_sub(::Val{1}, x::Neutral{ 0}, y::Number) = is_unitless(y) ? -y : throw_sub_dimensionful_and_zero()
-impl_sub(::Val{1}, x::Neutral{ 1}, y::Number) = convert(type_common(y), 1) - y
-impl_sub(::Val{1}, x::Neutral{-1}, y::Number) = -convert(type_common(y), 1) - y
+impl_sub(x::Neutral{ 0}, y::BareNumber) = -y
+impl_sub(x::Neutral{ 0}, y::Number) = is_unitless(y) ? -y : throw_sub_dimensionful_and_zero()
+impl_sub(x::Neutral{ 1}, y::Number) = convert(type_common(y), 1) - y
+impl_sub(x::Neutral{-1}, y::Number) = -convert(type_common(y), 1) - y
 
-impl_sub(::Val{2}, x::BareNumber, y::Neutral{0}) = x
-impl_sub(::Val{2}, x::Number, y::Neutral{ 0}) = is_unitless(x) ? x : throw_sub_dimensionful_and_zero()
-impl_sub(::Val{2}, x::Number, y::Neutral{ 1}) = x - convert(type_common(x), 1)
-impl_sub(::Val{2}, x::Number, y::Neutral{-1}) = x + convert(type_common(x), 1)
+impl_sub(x::BareNumber, y::Neutral{0}) = x
+impl_sub(x::Number, y::Neutral{ 0}) = is_unitless(x) ? x : throw_sub_dimensionful_and_zero()
+impl_sub(x::Number, y::Neutral{ 1}) = x - convert(type_common(x), 1)
+impl_sub(x::Number, y::Neutral{-1}) = x + convert(type_common(x), 1)
 
 @noinline throw_sub_dimensionful_and_zero() =
     throw(ArgumentError("𝟘 and dimensionful quantity cannot be subtracted"))
@@ -194,19 +189,19 @@ impl_sub(::Val{2}, x::Number, y::Neutral{-1}) = x + convert(type_common(x), 1)
 # In Julia, Booleans are promoted to `Int` for addition, subtraction and bitwise shifts
 # (base/bool.jl). The implementations of addition and subtraction of a Boolean with `±𝟙` are
 # specialized according to this.
-impl_add(::Val{2}, x::Bool, y::Neutral{ 1}) = Int(x) + 1
-impl_add(::Val{2}, x::Bool, y::Neutral{-1}) = Int(x) - 1
+impl_add(x::Bool, y::Neutral{ 1}) = Int(x) + 1
+impl_add(x::Bool, y::Neutral{-1}) = Int(x) - 1
 #
-impl_sub(::Val{2}, x::Bool, y::Neutral{ 1}) = Int(x) - 1
-impl_sub(::Val{2}, x::Bool, y::Neutral{-1}) = Int(x) + 1
-impl_sub(::Val{1}, x::Neutral{ 1}, y::Bool) = 1 - Int(y)
-impl_sub(::Val{1}, x::Neutral{-1}, y::Bool) = -1 - Int(y)
+impl_sub(x::Bool, y::Neutral{ 1}) = Int(x) - 1
+impl_sub(x::Bool, y::Neutral{-1}) = Int(x) + 1
+impl_sub(x::Neutral{ 1}, y::Bool) = 1 - Int(y)
+impl_sub(x::Neutral{-1}, y::Bool) = -1 - Int(y)
 
 """
     Neutrals.impl_mul(w::Val, x, y) -> x * y    # if x and y are numbers
     Neutrals.impl_mul(w::Val, x, y) -> x .* y   # if one of x or y is an array
 
-Implemen scalar or element-wise multiplication of `x` by `y` when at least one of the
+Implement scalar or element-wise multiplication of `x` by `y` when at least one of the
 operands is a neutral number while the other is a number or an array of numbers. See
 [`Neutrals.impl_add`](@ref) for the interpretation of `w`.
 
@@ -214,10 +209,10 @@ This method can be overridden by specializing it when the first operand is a neu
 that is for `w::Val{1}`.
 
 """
-impl_mul(::Val{1}, x::Neutral{ 0}, y::BareNumber) = ZERO
-impl_mul(::Val{1}, x::Neutral{ 0}, y::AbstractArray{<:BareNumber}) = similar(y, typeof(x))
-impl_mul(::Val{1}, x::Neutral{ 1}, y::Operand{Number}) = y
-impl_mul(::Val{1}, x::Neutral{-1}, y::Operand{Number}) = -y
+impl_mul(x::Neutral{ 0}, y::BareNumber) = ZERO
+impl_mul(x::Neutral{ 0}, y::AbstractArray{<:BareNumber}) = similar(y, typeof(x))
+impl_mul(x::Neutral{ 1}, y::Operand{Number}) = y
+impl_mul(x::Neutral{-1}, y::Operand{Number}) = -y
 
 """
     Neutrals.impl_div(w::Val, x, y) -> x / y    # if x and y are numbers
@@ -228,19 +223,19 @@ a neutral number while the other is a number or an array of numbers. See
 [`Neutrals.impl_add`](@ref) for the interpretation of `w`.
 
 """
-impl_div(::Val{1}, x::Neutral{ 0}, y::BareNumber) = ZERO
-impl_div(::Val{1}, x::Neutral{ 1}, y::Number) = impl_inv(y)
-impl_div(::Val{1}, x::Neutral{-1}, y::Number) = -impl_inv(y)
+impl_div(x::Neutral{ 0}, y::BareNumber) = ZERO
+impl_div(x::Neutral{ 1}, y::Number) = impl_inv(y)
+impl_div(x::Neutral{-1}, y::Number) = -impl_inv(y)
 
-impl_div(::Val{2}, x::Operand{Number}, y::Neutral{0}) = throw(DivideError())
-impl_div(::Val{2}, x::Operand{Number}, y::Neutral{1}) = x
-impl_div(::Val{2}, x::Operand{Number}, y::Neutral{-1}) = -x
+impl_div(x::Operand{Number}, y::Neutral{0}) = throw(DivideError())
+impl_div(x::Operand{Number}, y::Neutral{1}) = x
+impl_div(x::Operand{Number}, y::Neutral{-1}) = -x
 
 # Element-wise division of neutral number `x` by array `y`. Division by zero is first
 # checked, then the result is computed according to the specific value of `x` using
 # auxiliary function `_impl_div` to dispatch on `x`.
-impl_div(::Val{1}, x::Neutral, y::AbstractArray{<:Neutral{0}}) = throw(DivideError())
-impl_div(::Val{1}, x::Neutral, y::AbstractArray{<:Number}) = _impl_div(x, y) # to dispatch on x
+impl_div(x::Neutral, y::AbstractArray{<:Neutral{0}}) = throw(DivideError())
+impl_div(x::Neutral, y::AbstractArray{<:Number}) = _impl_div(x, y) # to dispatch on x
 _impl_div(x::Neutral{ 0}, y::AbstractArray{<:BareNumber}) = similar(y, typeof(x))
 _impl_div(x::Neutral{ 1}, y::AbstractArray{<:Number}) = impl_inv.(y)
 _impl_div(x::Neutral{-1}, y::AbstractArray{<:Number}) = -impl_inv.(y)
@@ -283,9 +278,9 @@ which yields the rounded towards `-Inf`, implying that sign matches `y`.
 # other operand.
 for (f, g) in (:div => :impl_tdv, :rem => :impl_rem, :mod => :impl_mod)
     @eval begin
-        $g(::Val{2}, x::Real, y::Neutral{0}) = throw(DivideError())
-        $g(::Val{2}, x::Real, y::Neutral) = $f(x, convert(type_signed(x), y))
-        $g(::Val{1}, x::Neutral, y::Real) = $f(convert(type_signed(y), x), y)
+        $g(x::Real, y::Neutral{0}) = throw(DivideError())
+        $g(x::Real, y::Neutral) = $f(x, convert(type_signed(x), y))
+        $g(x::Neutral, y::Real) = $f(convert(type_signed(y), x), y)
     end
 end
 
@@ -293,15 +288,15 @@ end
 # neutral numbers are signed integers.
 #
 # Quotient of truncated division is of the signedness of the 1st operand.
-impl_tdv(::Val{2}, x::Integer, y::Neutral{1}) = x
+impl_tdv(x::Integer, y::Neutral{1}) = x
 #
 # Remainder of truncated division is of the signedness of the `st operand.
-impl_rem(::Val{2}, x::Integer, y::Neutral{1}) = zero(x) # FIXME yield ZERO instead?
-impl_rem(::Val{2}, x::Signed, y::Neutral{-1}) = zero(x) # FIXME yield ZERO instead?
+impl_rem(x::Integer, y::Neutral{1}) = zero(x) # FIXME yield ZERO instead?
+impl_rem(x::Signed, y::Neutral{-1}) = zero(x) # FIXME yield ZERO instead?
 #
 # Modulo is of the signedness of the 2nd operand and is 0 if 2nd operand is -1.
-impl_mod(::Val{2}, x::Integer, y::Neutral{1}) = zero(type_signed(x)) # FIXME yield ZERO instead?
-impl_mod(::Val{2}, x::Integer, y::Neutral{-1}) = zero(type_signed(x)) # FIXME yield ZERO instead?
+impl_mod(x::Integer, y::Neutral{1}) = zero(type_signed(x)) # FIXME yield ZERO instead?
+impl_mod(x::Integer, y::Neutral{-1}) = zero(type_signed(x)) # FIXME yield ZERO instead?
 #
 # For Booleans, implementation of `div`, `rem`, and `mod` in `base/bool.jl` is:
 #
@@ -309,11 +304,11 @@ impl_mod(::Val{2}, x::Integer, y::Neutral{-1}) = zero(type_signed(x)) # FIXME yi
 #     rem(x::Bool, y::Bool) = y ? false : throw(DivideError())
 #     mod(x::Bool, y::Bool) = rem(x,y)
 #
-impl_tdv(::Val{2}, x::Bool, y::Neutral{1}) = x
-impl_rem(::Val{2}, x::Bool, y::Neutral{1}) = false
-impl_mod(::Val{2}, x::Bool, y::Neutral{1}) = false
+impl_tdv(x::Bool, y::Neutral{1}) = x
+impl_rem(x::Bool, y::Neutral{1}) = false
+impl_mod(x::Bool, y::Neutral{1}) = false
 for f in (:impl_tdv, :impl_rem, :impl_mod)
-    @eval $f(::Val{2}, x::Bool, y::Neutral{-1}) = throw(InexactError(:convert, Bool, -ONE))
+    @eval $f(x::Bool, y::Neutral{-1}) = throw(InexactError(:convert, Bool, -ONE))
 end
 
 """
@@ -323,12 +318,12 @@ Implements raising number `x` to the power `y` when `y` is a neutral number. See
 [`Neutrals.impl_add`](@ref) for the interpretation of `w`.
 
 """
-impl_pow(::Val{2}, x::Number, ::Neutral{0}) = oneunit(x)
-impl_pow(::Val{2}, x::Number, ::Neutral{1}) = x
-impl_pow(::Val{2}, x::Number, ::Neutral{-1}) = impl_inv(x)
+impl_pow(x::Number, ::Neutral{0}) = oneunit(x)
+impl_pow(x::Number, ::Neutral{1}) = x
+impl_pow(x::Number, ::Neutral{-1}) = impl_inv(x)
 
 # There is no `oneunit` for irrational numbers.
-impl_pow(::Val{2}, x::AbstractIrrational, ::Neutral{0}) = 1.0
+impl_pow(x::AbstractIrrational, ::Neutral{0}) = 1.0
 
 """
     Neutrals.impl_eq(w::Val, x, y) -> x == y
@@ -340,22 +335,22 @@ This method can be overridden by specializing it when the second operand is a ne
 number, that is for for `w::Val{2}`.
 
 """
-impl_eq(::Val{2}, x::Number, ::Neutral{ 0}) = is_unitless(x) && iszero(x)
-impl_eq(::Val{2}, x::Number, ::Neutral{ 1}) = isone(x)
-impl_eq(::Val{2}, x::Number, ::Neutral{-1}) = x == -convert(type_common(x), 1)
+impl_eq(x::Number, ::Neutral{ 0}) = is_unitless(x) && iszero(x)
+impl_eq(x::Number, ::Neutral{ 1}) = isone(x)
+impl_eq(x::Number, ::Neutral{-1}) = x == -convert(type_common(x), 1)
  # NOTE We are assuming that `isone(x)` is not slower than `x == one(x)` or `x ==
  #      convert(type_common(x), 1)`. We assume that `x == -𝟙` is specialized to yield
  #      `false` for unsigned numbers (see below).
 
 # Optimize comparison of an unsigned real and a neutral number.
-impl_eq(::Val{2}, x::UnsignedNumber, y::Neutral{-1}) = false
+impl_eq(x::UnsignedNumber, y::Neutral{-1}) = false
 #
-impl_eq(::Val{2}, x::Bool, y::Neutral{1}) = x
-impl_eq(::Val{2}, x::Bool, y::Neutral{0}) = !x
+impl_eq(x::Bool, y::Neutral{1}) = x
+impl_eq(x::Bool, y::Neutral{0}) = !x
 
 # Neutral numbers are integers and are never equal to irrational numbers.
 for n in instances(Neutral)
-    @eval impl_eq(::Val{2}, x::AbstractIrrational, y::$(typeof(n))) = false
+    @eval impl_eq(x::AbstractIrrational, y::$(typeof(n))) = false
 end
 
 """
@@ -367,13 +362,13 @@ Implement `<` for real numbers when at least one of the operands is a neutral nu
 """ impl_lt
 
 # Optimize comparison of an unsigned real and a neutral number.
-impl_lt(::Val{2}, x::UnsignedReal, y::Neutral{0}) = false
-impl_lt(::Val{2}, x::UnsignedReal, y::Neutral{-1}) = false
-impl_lt(::Val{1}, x::Neutral{-1}, y::UnsignedReal) = true
+impl_lt(x::UnsignedReal, y::Neutral{0}) = false
+impl_lt(x::UnsignedReal, y::Neutral{-1}) = false
+impl_lt(x::Neutral{-1}, y::UnsignedReal) = true
 #
-impl_lt(::Val{2}, x::Bool, y::Neutral{1}) = !x
-impl_lt(::Val{1}, x::Neutral{0}, y::Bool) = y
-impl_lt(::Val{1}, x::Neutral{1}, y::Bool) = false
+impl_lt(x::Bool, y::Neutral{1}) = !x
+impl_lt(x::Neutral{0}, y::Bool) = y
+impl_lt(x::Neutral{1}, y::Bool) = false
 
 """
     Neutrals.impl_le(w::Val, x, y) -> x ≤ y
@@ -384,18 +379,18 @@ Implement `≤` for real numbers when at least one of the operands is a neutral 
 """ impl_le
 
 # Optimize comparison of an unsigned real and a neutral number.
-impl_le(::Val{2}, x::UnsignedReal, y::Neutral{-1}) = false
-impl_le(::Val{1}, x::Neutral{0}, y::UnsignedReal) = true
-impl_le(::Val{1}, x::Neutral{-1}, y::UnsignedReal) = true
+impl_le(x::UnsignedReal, y::Neutral{-1}) = false
+impl_le(x::Neutral{0}, y::UnsignedReal) = true
+impl_le(x::Neutral{-1}, y::UnsignedReal) = true
 #
-impl_le(::Val{2}, x::Bool, y::Neutral{0}) = !x
-impl_le(::Val{2}, x::Bool, y::Neutral{1}) = true
-impl_le(::Val{1}, x::Neutral{1}, y::Bool) = y
+impl_le(x::Bool, y::Neutral{0}) = !x
+impl_le(x::Bool, y::Neutral{1}) = true
+impl_le(x::Neutral{1}, y::Bool) = y
 
 for (f, g) in (:(<) => :impl_lt, :(<=) => :impl_le)
     @eval begin
-        $g(::Val{2}, x::Real, y::Neutral) = $f(x, convert(type_common(x), y))
-        $g(::Val{1}, x::Neutral, y::Real) = $f(convert(type_common(y), x), y)
+        $g(x::Real, y::Neutral) = $f(x, convert(type_common(x), y))
+        $g(x::Neutral, y::Real) = $f(convert(type_common(y), x), y)
     end
 end
 
@@ -409,18 +404,18 @@ This method can be overridden by specializing it when the second operand is a ne
 number.
 
 """
-impl_cmp(::Val{1}, x::Neutral, y::Real) =
-    -impl_cmp(Val(2), y, x) # put neutral number second
-impl_cmp(::Val{2}, x::Integer, y::Neutral) =
-    ifelse(impl_isless(Val(2), x, y), -1, ifelse(impl_isless(Val(1), y, x), 1, 0))
-impl_cmp(::Val{2}, x::Real, y::Neutral) =
-    impl_isless(Val(2), x, y) ? -1 : ifelse(impl_isless(Val(1), y, x), 1, 0)
+impl_cmp(x::Neutral, y::Real) =
+    -impl_cmp(y, x) # put neutral number second
+impl_cmp(x::Integer, y::Neutral) =
+    ifelse(impl_isless(x, y), -1, ifelse(impl_isless(y, x), 1, 0))
+impl_cmp(x::Real, y::Neutral) =
+    impl_isless(x, y) ? -1 : ifelse(impl_isless(y, x), 1, 0)
 
 # Optimize comparison of an unsigned real and a neutral number.
-impl_cmp(::Val{2}, x::UnsignedReal, y::Neutral{-1}) = 1
-impl_cmp(::Val{2}, x::UnsignedReal, y::Neutral{0}) = iszero(x) ? 0 : 1
+impl_cmp(x::UnsignedReal, y::Neutral{-1}) = 1
+impl_cmp(x::UnsignedReal, y::Neutral{0}) = iszero(x) ? 0 : 1
 #
-impl_cmp(::Val{2}, x::Bool, y::Neutral{1}) = x ? 0 : -1
+impl_cmp(x::Bool, y::Neutral{1}) = x ? 0 : -1
 
 """
     Neutrals.impl_isless(w::Val, x, y) -> isless(x, y)
@@ -429,13 +424,13 @@ Implement `isless` for real numbers when at least one of the operands is a neutr
 See [`Neutrals.impl_add`](@ref) for the interpretation of `w`.
 
 """
-@inline impl_isless(w::Val, x::Real, y::Real) = impl_lt(w, x, y)
+@inline impl_isless(x::Real, y::Real) = impl_lt(x, y)
 
 # NOTE For floats in `base/float.jl`:
 #      isless(x, y) =  isnan(x) || isnan(b) ? !isnan(x) : x < y
-@inline impl_isless(::Val{2}, x::AbstractFloat, y::Neutral) =
+@inline impl_isless(x::AbstractFloat, y::Neutral) =
     isnan(x) ? false : x < oftype(x, value(y))
-@inline impl_isless(::Val{1}, x::Neutral, y::AbstractFloat) =
+@inline impl_isless(x::Neutral, y::AbstractFloat) =
     isnan(y) ? true : oftype(y, value(x)) < y
 
 # For bitwise operations (`|`, `&`, and `xor`) between integers (including Booleans and big
@@ -454,13 +449,13 @@ overridden, it is sufficient to specialize it when the second operand is a neutr
 that is for `w::Val{2}`.
 
 """
-impl_or(::Val{2}, x::Integer, ::Neutral{0}) = x
-impl_or(::Val{2}, x::Integer, ::Neutral{1}) = x | one(x)
-impl_or(::Val{2}, x::Integer, ::Neutral{-1}) = ~zero(x) # NOTE see remark for `x & 𝟘`
+impl_or(x::Integer, ::Neutral{0}) = x
+impl_or(x::Integer, ::Neutral{1}) = x | one(x)
+impl_or(x::Integer, ::Neutral{-1}) = ~zero(x) # NOTE see remark for `x & 𝟘`
 
 # Optimize for Booleans.
-impl_or(::Val{2}, x::Bool, ::Neutral{1}) = true
-impl_or(::Val{2}, x::Bool, ::Neutral{-1}) = true
+impl_or(x::Bool, ::Neutral{1}) = true
+impl_or(x::Bool, ::Neutral{-1}) = true
 
 """
     Neutrals.impl_and(w::Val, x, y) -> x & y
@@ -471,12 +466,12 @@ overridden, it is sufficient to specialize it when the second operand is a neutr
 that is for `w::Val{2}`.
 
 """
-impl_and(::Val{2}, x::Integer, ::Neutral{0}) = zero(x) # NOTE not 𝟘, because 𝟘 is defined according to + and *, not &
-impl_and(::Val{2}, x::Integer, ::Neutral{1}) = x & one(x)
-impl_and(::Val{2}, x::Integer, ::Neutral{-1}) = x
+impl_and(x::Integer, ::Neutral{0}) = zero(x) # NOTE not 𝟘, because 𝟘 is defined according to + and *, not &
+impl_and(x::Integer, ::Neutral{1}) = x & one(x)
+impl_and(x::Integer, ::Neutral{-1}) = x
 
 # Optimize for Booleans.
-impl_and(::Val{2}, x::Bool, ::Neutral{1}) = x
+impl_and(x::Bool, ::Neutral{1}) = x
 
 """
     Neutrals.impl_xor(w::Val, x, y)
@@ -487,13 +482,13 @@ overridden, it is sufficient to specialize it when the second operand is a neutr
 that is for `w::Val{2}`.
 
 """
-impl_xor(::Val{2}, x::Integer, y::Neutral{0}) = x
-impl_xor(::Val{2}, x::Integer, y::Neutral{1}) = xor(x, one(x))
-impl_xor(::Val{2}, x::Integer, y::Neutral{-1}) = xor(x, ~zero(x))
+impl_xor(x::Integer, y::Neutral{0}) = x
+impl_xor(x::Integer, y::Neutral{1}) = xor(x, one(x))
+impl_xor(x::Integer, y::Neutral{-1}) = xor(x, ~zero(x))
 
 # Optimize for Booleans.
-impl_xor(::Val{2}, x::Bool, ::Neutral{1}) = !x
-impl_xor(::Val{2}, x::Bool, ::Neutral{-1}) = !x
+impl_xor(x::Bool, ::Neutral{1}) = !x
+impl_xor(x::Bool, ::Neutral{-1}) = !x
 
 # For bit shift operation of an integer `x` (including Booleans and big integers) by a
 # number of bits specified by a neutral number, it is sufficient to override the
@@ -502,37 +497,37 @@ impl_xor(::Val{2}, x::Bool, ::Neutral{-1}) = !x
 # operation with a number of bits specified as an `UInt` (see base/int.jl).
 
 """
-    Neutrals.impl_lshft(w::Val{2}, x, y) -> x << y
+    Neutrals.impl_lshft(x, y) -> x << y
 
 Implement left bit shift of integer `x` by neutral number `y`. See
 [`Neutrals.impl_add`](@ref) for the interpretation of `w`.
 
 """
-impl_lshft(::Val{2}, x::Integer, ::Neutral{ 0}) = x
-impl_lshft(::Val{2}, x::Integer, ::Neutral{ 1}) = x << UInt(1)
-impl_lshft(::Val{2}, x::Integer, ::Neutral{-1}) = x >> UInt(1)
+impl_lshft(x::Integer, ::Neutral{ 0}) = x
+impl_lshft(x::Integer, ::Neutral{ 1}) = x << UInt(1)
+impl_lshft(x::Integer, ::Neutral{-1}) = x >> UInt(1)
 
 """
-    Neutrals.impl_rshft(w::Val{2}, x, y) -> x >> y
+    Neutrals.impl_rshft(x, y) -> x >> y
 
 Implement right bit shift of integer `x` by neutral number `y`. See
 [`Neutrals.impl_add`](@ref) for the interpretation of `w`.
 
 """
-impl_rshft(::Val{2}, x::Integer, ::Neutral{ 0}) = x
-impl_rshft(::Val{2}, x::Integer, ::Neutral{ 1}) = x >> UInt(1)
-impl_rshft(::Val{2}, x::Integer, ::Neutral{-1}) = x << UInt(1)
+impl_rshft(x::Integer, ::Neutral{ 0}) = x
+impl_rshft(x::Integer, ::Neutral{ 1}) = x >> UInt(1)
+impl_rshft(x::Integer, ::Neutral{-1}) = x << UInt(1)
 
 """
-    Neutrals.impl_rshft(w::Val{2}, x, y) -> x >>> y
+    Neutrals.impl_rshft(x, y) -> x >>> y
 
 Implement unsigned right bit shift of integer `x` by neutral number `y`. See
 [`Neutrals.impl_add`](@ref) for the interpretation of `w`.
 
 """
-impl_urshft(::Val{2}, x::Integer, ::Neutral{ 0}) = x
-impl_urshft(::Val{2}, x::Integer, ::Neutral{ 1}) = x >>> UInt(1)
-impl_urshft(::Val{2}, x::Integer, ::Neutral{-1}) = x << UInt(1)
+impl_urshft(x::Integer, ::Neutral{ 0}) = x
+impl_urshft(x::Integer, ::Neutral{ 1}) = x >>> UInt(1)
+impl_urshft(x::Integer, ::Neutral{-1}) = x << UInt(1)
 
 #----------------------------------------------------------------------------- Big numbers -
 #
@@ -543,9 +538,9 @@ impl_urshft(::Val{2}, x::Integer, ::Neutral{-1}) = x << UInt(1)
 # nothing to do here. For big integers, `cmp` with a non-big integer `c` of size not larger
 # than a `Clong` calls one of the compiled methods with `c` as a `Clong` or as a `Culong`.
 # Hence, we only have to specialize `cmp` for a big integer and a neutral number.
-impl_cmp(::Val{2}, x::BigInt, y::Neutral{ 0}) = cmp(x, Culong(0))
-impl_cmp(::Val{2}, x::BigInt, y::Neutral{ 1}) = cmp(x, Culong(1))
-impl_cmp(::Val{2}, x::BigInt, y::Neutral{-1}) = cmp(x, Clong(-1))
+impl_cmp(x::BigInt, y::Neutral{ 0}) = cmp(x, Culong(0))
+impl_cmp(x::BigInt, y::Neutral{ 1}) = cmp(x, Culong(1))
+impl_cmp(x::BigInt, y::Neutral{-1}) = cmp(x, Clong(-1))
 #
 # As can be seen in `base/gmp.jl`, for the addition or subtraction of a big integer with
 # `c`, an integer of size ≤ `sizeof(Clong)`, the operation branches on the sign of `c` to
@@ -561,18 +556,18 @@ impl_cmp(::Val{2}, x::BigInt, y::Neutral{-1}) = cmp(x, Clong(-1))
 for T in (:BigInt, :BigFloat)
     @eval begin
         # Addition. It is only needed to extend the rules for `±𝟙`.
-        impl_add(::Val{2}, x::$T, y::Neutral{ 1}) = x + Culong(1)
-        impl_add(::Val{2}, x::$T, y::Neutral{-1}) = x - Culong(1)
+        impl_add(x::$T, y::Neutral{ 1}) = x + Culong(1)
+        impl_add(x::$T, y::Neutral{-1}) = x - Culong(1)
 
         # Subtraction. It is only needed to extend the rules for `±𝟙`.
-        impl_sub(::Val{2}, x::$T, y::Neutral{ 1}) = x - Culong(1)
-        impl_sub(::Val{2}, x::$T, y::Neutral{-1}) = x + Culong(1)
+        impl_sub(x::$T, y::Neutral{ 1}) = x - Culong(1)
+        impl_sub(x::$T, y::Neutral{-1}) = x + Culong(1)
 
-        impl_sub(::Val{1}, x::Neutral{ 1}, y::$T) = Culong(1) - y
-        impl_sub(::Val{1}, x::Neutral{-1}, y::$T) = -(y + Culong(1))
+        impl_sub(x::Neutral{ 1}, y::$T) = Culong(1) - y
+        impl_sub(x::Neutral{-1}, y::$T) = -(y + Culong(1))
 
         # Equality. It is only needed to extend the rules for `-𝟙`.
-        impl_eq(::Val{2}, x::$T, y::Neutral{-1}) = x == Clong(-1)
+        impl_eq(x::$T, y::Neutral{-1}) = x == Clong(-1)
     end
 end
 
@@ -600,13 +595,13 @@ end
 
 broadcasted(::typeof(-), x::Operand{Number}, ::Neutral{0}) = x
 
-broadcasted(::typeof(*), x::Neutral, y::Neutral) = impl_mul(Val(3), x, y)
-broadcasted(::typeof(*), x::Operand{Number}, y::Neutral) = impl_mul(Val(1), y, x) # put neutral number 1st
-broadcasted(::typeof(*), x::Neutral, y::Operand{Number}) = impl_mul(Val(1), x, y)
+broadcasted(::typeof(*), x::Neutral, y::Neutral) = impl_mul(x, y)
+broadcasted(::typeof(*), x::Operand{Number}, y::Neutral) = impl_mul(y, x) # put neutral number 1st
+broadcasted(::typeof(*), x::Neutral, y::Operand{Number}) = impl_mul(x, y)
 
-broadcasted(::typeof(/), x::Neutral, y::Neutral) = impl_div(Val(3), x, y)
-broadcasted(::typeof(/), x::Operand{Number}, y::Neutral) = impl_div(Val(2), x, y)
-broadcasted(::typeof(/), x::Neutral, y::Operand{Number}) = impl_div(Val(1), x, y)
+broadcasted(::typeof(/), x::Neutral, y::Neutral) = impl_div(x, y)
+broadcasted(::typeof(/), x::Operand{Number}, y::Neutral) = impl_div(x, y)
+broadcasted(::typeof(/), x::Neutral, y::Operand{Number}) = impl_div(x, y)
 
 broadcasted(::typeof(\), x::Neutral, y::Neutral) = broadcasted(/, y, x)
 broadcasted(::typeof(\), x::Neutral, y::Operand{Number}) = broadcasted(/, y, x)
