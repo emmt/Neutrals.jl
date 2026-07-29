@@ -1,8 +1,7 @@
 module TestingNeutrals
 
-using Neutrals
-using Test
-using TypeUtils
+isdefined(@__MODULE__, :(≙)) || include("setup.jl")
+
 using Unitful, Unitful.DefaultSymbols
 
 using Base: Fix1, Fix2
@@ -10,25 +9,6 @@ using Base: Fix1, Fix2
 const UnsignedRational = Rational{<:Union{Bool,Unsigned}}
 const UnsignedReal = Union{Bool,Unsigned,UnsignedRational}
 const UnsignedComplex = Complex{<:UnsignedReal}
-
-"""
-    x ≗ y
-
-yields whether `x` and `y` have the same element types, the same axes, and the same values
-(in the sense of `isequal`). It can be seen as a shortcut for:
-
-    eltype(x) == eltype(y) && axes(x) == axes(y) && all(isequal, x, y)
-
-"""
-≗(x::Any, y::Any) = false
-≗(x::T, y::T) where {T} = isequal(x, y)
-function ≗(x::AbstractArray{T,N}, y::AbstractArray{T,N}) where {T,N}
-    axes(x) == axes(y) || return false
-    @inbounds for i in eachindex(x, y)
-        isequal(x[i], y[i]) || return false
-    end
-    return true
-end
 
 struct LengthInMeters{T<:Real} <: Number
     len::T
@@ -531,20 +511,20 @@ end
                         @test iszero(y) # test assumption
                         @test typeof(y) == typeof(x) # result of `rem` has signedness of 1st operand
                     end
-                    @test rem(x, ONE) ≗ y
+                    @test rem(x, ONE) ≙ y
                 end
                 let y = mod(x, one(S))
                     if x isa Integer
                         @test iszero(y) # test assumption
                         @test typeof(y) == S # result of `mod` has signedness of 2nd operand
                     end
-                    @test mod(x, ONE) ≗ y
+                    @test mod(x, ONE) ≙ y
                 end
                 # Test division of x by -𝟙.
                 if !(x isa UnsignedRational)
-                    @test div(x, -ONE) ≗ div(x, -one(S))
-                    @test rem(x, -ONE) ≗ rem(x, -one(S))
-                    @test mod(x, -ONE) ≗ mod(x, -one(S))
+                    @test div(x, -ONE) ≙ div(x, -one(S))
+                    @test rem(x, -ONE) ≙ rem(x, -one(S))
+                    @test mod(x, -ONE) ≙ mod(x, -one(S))
                 end
                 # Test division of 𝟘, 𝟙, and -𝟙 by x.
                 if iszero(x) && x isa Union{Integer,Rational}
@@ -561,18 +541,18 @@ end
                     end
                 else # division by x is possible
                     # Test division of 𝟘 by x.
-                    @test div(ZERO, x) ≗ div(zero(S), x)
-                    @test rem(ZERO, x) ≗ rem(zero(S), x)
-                    @test mod(ZERO, x) ≗ mod(zero(S), x)
+                    @test div(ZERO, x) ≙ div(zero(S), x)
+                    @test rem(ZERO, x) ≙ rem(zero(S), x)
+                    @test mod(ZERO, x) ≙ mod(zero(S), x)
                     # Test division of 𝟙 by x.
-                    @test div(ONE, x) ≗ div(one(S), x)
-                    @test rem(ONE, x) ≗ rem(one(S), x)
-                    @test mod(ONE, x) ≗ mod(one(S), x)
+                    @test div(ONE, x) ≙ div(one(S), x)
+                    @test rem(ONE, x) ≙ rem(one(S), x)
+                    @test mod(ONE, x) ≙ mod(one(S), x)
                     if !(x isa UnsignedRational)
                         # Test division of -𝟙 by x.
-                        @test div(-ONE, x) ≗ div(-one(S), x)
-                        @test rem(-ONE, x) ≗ rem(-one(S), x)
-                        @test mod(-ONE, x) ≗ mod(-one(S), x)
+                        @test div(-ONE, x) ≙ div(-one(S), x)
+                        @test rem(-ONE, x) ≙ rem(-one(S), x)
+                        @test mod(-ONE, x) ≙ mod(-one(S), x)
                     end
                 end
             end
@@ -817,21 +797,21 @@ end
             @test x .+ ZERO === x
             @test ZERO .+ x === x
             @test x .- ZERO === x
-            @test ZERO .- x ≗ -x
-            @test x .* ZERO ≗ z
-            @test x * ZERO ≗ z
-            @test ZERO .* x ≗ z
-            @test ZERO * x ≗ z
+            @test ZERO .- x ≙ -x
+            @test x .* ZERO ≙ z
+            @test x * ZERO ≙ z
+            @test ZERO .* x ≙ z
+            @test ZERO * x ≙ z
             @test_throws DivideError x ./ ZERO
             @test_throws DivideError x / ZERO
-            @test ZERO ./ x ≗ z
-            @test x .\ ZERO ≗ z
-            @test x.^ZERO ≗ u
+            @test ZERO ./ x ≙ z
+            @test x .\ ZERO ≙ z
+            @test x.^ZERO ≙ u
 
-            @test x .+ ONE ≗ x .+ one(eltype(x))
-            @test ONE .+ x ≗ x .+ one(eltype(x))
-            @test x .- ONE ≗ x .- one(eltype(x))
-            @test ONE .- x ≗ one(eltype(x)) .- x
+            @test x .+ ONE ≙ x .+ one(eltype(x))
+            @test ONE .+ x ≙ x .+ one(eltype(x))
+            @test x .- ONE ≙ x .- one(eltype(x))
+            @test ONE .- x ≙ one(eltype(x)) .- x
             @test x .* ONE === x
             @test x * ONE === x
             @test ONE .* x === x
@@ -840,25 +820,25 @@ end
             @test x / ONE === x
             @test ONE .\ x === x
             @test ONE \ x === x
-            @test ONE ./ x ≗ r
-            @test x .\ ONE ≗ r
+            @test ONE ./ x ≙ r
+            @test x .\ ONE ≙ r
             @test x.^ONE === x
 
-            @test x .+ (-ONE) ≗ x .- one(eltype(x))
-            @test (-ONE) .+ x ≗ x .- one(eltype(x))
-            @test x .- (-ONE) ≗ x .+ one(eltype(x))
-            @test (-ONE) .- x ≗ (-one(eltype(x))) .- x
-            @test x .* (-ONE) ≗ -x
-            @test x * (-ONE) ≗ -x
-            @test (-ONE) .* x ≗ -x
-            @test (-ONE) * x ≗ -x
-            @test x ./ (-ONE) ≗ -x
-            @test x / (-ONE) ≗ -x
-            @test (-ONE) .\ x ≗ -x
-            @test (-ONE) \ x ≗ -x
-            @test (-ONE) ./ x ≗ -r
-            @test x .\ (-ONE) ≗ -r
-            @test x.^(-ONE) ≗ r
+            @test x .+ (-ONE) ≙ x .- one(eltype(x))
+            @test (-ONE) .+ x ≙ x .- one(eltype(x))
+            @test x .- (-ONE) ≙ x .+ one(eltype(x))
+            @test (-ONE) .- x ≙ (-one(eltype(x))) .- x
+            @test x .* (-ONE) ≙ -x
+            @test x * (-ONE) ≙ -x
+            @test (-ONE) .* x ≙ -x
+            @test (-ONE) * x ≙ -x
+            @test x ./ (-ONE) ≙ -x
+            @test x / (-ONE) ≙ -x
+            @test (-ONE) .\ x ≙ -x
+            @test (-ONE) \ x ≙ -x
+            @test (-ONE) ./ x ≙ -r
+            @test x .\ (-ONE) ≙ -r
+            @test x.^(-ONE) ≙ r
 
             @test_throws DivideError ZERO   ./ z
             @test_throws DivideError  ONE   ./ z
@@ -921,7 +901,7 @@ end
             @test lastindex(r) == 1
             @test eachindex(r) == 1:1
             @test axes(r) == (1:1,)
-            @test collect(r) ≗ [a]
+            @test collect(r) ≙ [a]
         else
             @test eltype(r) == Int
             if a === ONE
@@ -1005,7 +985,7 @@ end
         x = rand(Float32, 2, 3, 4)
 
         z = @inferred ZERO*x
-        @test @inferred(x*ZERO) ≗ z
+        @test @inferred(x*ZERO) ≙ z
         @test sizeof(z) == 0
         @test length(z) == length(x)
         @test size(z) == size(x)
@@ -1015,8 +995,8 @@ end
         @test @inferred(ONE*x) === x
         @test @inferred(x*ONE) === x
 
-        @test (-ONE)*x ≗ -x
-        @test x*(-ONE) ≗ -x
+        @test (-ONE)*x ≙ -x
+        @test x*(-ONE) ≙ -x
 
         @test_throws DivideError x/ZERO
         @test_throws DivideError ZERO\x
@@ -1024,14 +1004,14 @@ end
         @test @inferred(ONE\x) === x
         @test @inferred(x/ONE) === x
 
-        @test (-ONE)\x ≗ -x
-        @test x/(-ONE) ≗ -x
+        @test (-ONE)\x ≙ -x
+        @test x/(-ONE) ≙ -x
 
         # Arrays with units.
         y = x.*kg
 
         z = @inferred ZERO*y
-        @test @inferred(y*ZERO) ≗ z
+        @test @inferred(y*ZERO) ≙ z
         @test sizeof(z) == 0
         @test length(z) == length(y)
         @test size(z) == size(y)
@@ -1041,8 +1021,8 @@ end
         @test @inferred(ONE*y) === y
         @test @inferred(y*ONE) === y
 
-        @test (-ONE)*y ≗ -y
-        @test y*(-ONE) ≗ -y
+        @test (-ONE)*y ≙ -y
+        @test y*(-ONE) ≙ -y
 
         @test_throws DivideError y/ZERO
         @test_throws DivideError ZERO\y
@@ -1050,8 +1030,8 @@ end
         @test @inferred(ONE\y) === y
         @test @inferred(y/ONE) === y
 
-        @test (-ONE)\y ≗ -y
-        @test y/(-ONE) ≗ -y
+        @test (-ONE)\y ≙ -y
+        @test y/(-ONE) ≙ -y
 
         # Elementwise.
         x = @inferred Array{typeof(ZERO*cm)}(undef, 2, 3, 4)
@@ -1062,47 +1042,47 @@ end
         @test_throws DivideError x .\   ONE
         @test_throws DivideError x .\ (-ONE)
         let r = @inferred   ZERO .* x
-            @test @inferred(ZERO  * x) ≗ r
-            @test @inferred(x .* ZERO) ≗ r
-            @test @inferred(x  * ZERO) ≗ r
+            @test @inferred(ZERO  * x) ≙ r
+            @test @inferred(x .* ZERO) ≙ r
+            @test @inferred(x  * ZERO) ≙ r
         end
         let r = @inferred   ONE .* x
-            @test @inferred(ONE  * x) ≗ r
-            @test @inferred(x .* ONE) ≗ r
-            @test @inferred(x  * ONE) ≗ r
+            @test @inferred(ONE  * x) ≙ r
+            @test @inferred(x .* ONE) ≙ r
+            @test @inferred(x  * ONE) ≙ r
         end
         let r = @inferred   (-ONE) .* x
-            @test @inferred((-ONE)  * x) ≗ r
-            @test @inferred(x .* (-ONE)) ≗ r
-            @test @inferred(x  * (-ONE)) ≗ r
+            @test @inferred((-ONE)  * x) ≙ r
+            @test @inferred(x .* (-ONE)) ≙ r
+            @test @inferred(x  * (-ONE)) ≙ r
         end
 
         x = @inferred Array{typeof(ONE*cm)}(undef, 2, 3, 2)
-        @test  ZERO  .* x ≗ ZERO*x
-        @test  ZERO   * x ≗ ZERO*x
+        @test  ZERO  .* x ≙ ZERO*x
+        @test  ZERO   * x ≙ ZERO*x
         @test   ONE  .* x === x
         @test   ONE   * x === x
-        @test (-ONE) .* x ≗ -x
-        @test (-ONE)  * x ≗ -x
-        @test x .*  ZERO  ≗ ZERO*x
-        @test x  *  ZERO  ≗ ZERO*x
+        @test (-ONE) .* x ≙ -x
+        @test (-ONE)  * x ≙ -x
+        @test x .*  ZERO  ≙ ZERO*x
+        @test x  *  ZERO  ≙ ZERO*x
         @test x .*   ONE  === x
         @test x  *   ONE  === x
-        @test x .* (-ONE) ≗ -x
-        @test x  * (-ONE) ≗ -x
+        @test x .* (-ONE) ≙ -x
+        @test x  * (-ONE) ≙ -x
 
         @test_throws DivideError x ./ ZERO
         @test_throws DivideError x  / ZERO
         @test x ./   ONE  === x
         @test x  /   ONE  === x
-        @test x ./ (-ONE) ≗ -x
-        @test x  / (-ONE) ≗ -x
+        @test x ./ (-ONE) ≙ -x
+        @test x  / (-ONE) ≙ -x
         @test_throws DivideError ZERO .\ x
         @test_throws DivideError ZERO  \ x
         @test   ONE  .\ x === x
         @test   ONE   \ x === x
-        @test (-ONE) .\ x ≗ -x
-        @test (-ONE)  \ x ≗ -x
+        @test (-ONE) .\ x ≙ -x
+        @test (-ONE)  \ x ≙ -x
     end
 
     @testset "Miscellaneous properties" begin
