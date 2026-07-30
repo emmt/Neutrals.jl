@@ -1,9 +1,9 @@
 # Test basics operations on neutral numbers: constructors, accessors, conversions, etc.
 
 using Neutrals
+using Neutrals: ≙, ≗, maybe_neutral
+using Test
 using TypeUtils
-
-isdefined(@__MODULE__, :(≙)) || include("setup.jl")
 
 @testset "Basics" begin
     # Neutral type and instances.

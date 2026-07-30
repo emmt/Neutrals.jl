@@ -1,6 +1,9 @@
 # Check assumptions made about how Julia treats ordinary numbers.
 
-isdefined(@__MODULE__, :(≙)) || include("setup.jl")
+using Neutrals
+using Neutrals: ≙, ≗, maybe_neutral
+using Test
+using TypeUtils
 
 @testset "Assumptions" begin
     for T in [Bool, UInt8, UInt16, UInt32, UInt64, UInt128,

@@ -143,6 +143,24 @@ Base.modf(x::Neutral) = (ZERO, x)
 Base.widen(x::Neutral) = x
 Base.widen(::Type{T}) where {T<:Neutral} = T
 
+"""
+    Neutrals.signed_type(T::Type) -> S
+
+Return the signed type `S` that has the same number of bits as `T`.
+
+"""
+signed_type(::Type{T}) where {T<:Real} = T
+signed_type(::Type{Complex{T}}) where {T} = Complex{signed_type(T)}
+signed_type(::Type{Rational{T}}) where {T} = Rational{signed_type(T)}
+
+# NOTE Not all versions of Julia implement `signed(T)`.
+for (U, S) in (:UInt8 => :Int8, :UInt16 => :Int16, :UInt32 => :Int32,
+               :UInt64 => :Int64, :UInt128 => :Int128)
+    if isdefined(Base, U) && isdefined(Base, S)
+        @eval signed_type(::Type{$U}) = $S
+    end
+end
+
 #------------------------------------------------------------------------- Promotion rules -
 
 """
@@ -228,4 +246,95 @@ Base.last(r::UnitRange{T}) where {T<:Neutral} = T()
 # UnitRange with start and stop being the same neutral number. Such as `𝟙:𝟙`.
 if VERSION < v"1.8.0-beta1" && isdefined(Base, :unitrange_last)
     Base.unitrange_last(start::T, stop::T) where {T<:Neutral} = stop
+end
+
+#----------------------------------------------------------------------------------- Tests -
+#
+# The following functions may be used for testing the `Neutral` package or extensions of it.
+
+"""
+    Neutral.maybe_neutral(x)
+
+If `x` is an `Int` whose value is one of `0`, `1`, or `-1`, return the neutral number
+`Neutral{x}()`; otherwise, return `x` unchanged. This is equivalent to:
+
+    x isa Int && x ∈ (0, 1, -1) ? Neutral{x}() : x
+
+!!! note
+    This function is not type-stable and is not intended to be efficient. It may be useful
+    to encode methods related to the `Neutral` package (metaprogramming) or in tests.
+
+"""
+maybe_neutral(x) = x
+maybe_neutral(x::Int) =
+    x ===  0 ? ZERO :
+    x ===  1 ?  ONE :
+    x === -1 ? -ONE : x
+
+"""
+    using Neutral: ≙
+    x ≙ y
+    Neutral.strict_isequal(x, y)
+
+Return whether the numbers `x` and `y` have the same type and the same values in the sense
+that `isequal(x, y)` is true. This predicate is therefore more strict than `isequal` which
+only compare the values, not the types. It may be noticed that `isequal(NaN, NaN)` is true
+while `NaN == NaN` is not.
+
+If `x` and `y` are arrays, the call is equivalent to:
+
+    eltype(x) == eltype(y) && axes(x) == axes(y) && all(≙, x, y)
+
+# See also
+
+[`Neutral.sloppy_isequal`](@ref) for a less strict version which consider that two zeros and
+two NaNs are equal regardless of their signs.
+
+"""
+strict_isequal(x::T, y::T) where {T<:Number} = isequal(x, y)
+
+const ≙ = strict_isequal
+
+"""
+    using Neutral: ≗
+    x ≗ y
+    Neutral.sloppy_isequal(x, y)
+
+Return whether the numbers `x` and `y` have the same type and the same values in the sense
+that `isequal(x, y)` is true, or `iszero(x)` and `iszero(y)` are both true, or or `isnan(x)`
+and `isnan(y)` are both true. Compared to `isequal`, this amounts to disregarding the signs
+or zeros and NaNs when comparing their values.
+
+If `x` and `y` are arrays, the call is equivalent to:
+
+    eltype(x) == eltype(y) && axes(x) == axes(y) && all(≗, x, y)
+
+# See also
+
+[`Neutral.strict_isequal`](@ref) for a more strict version which does not disregard the
+signs of zeros and NaNs.
+
+"""
+sloppy_isequal(x::T, y::T) where {T<:Number} = isequal(x, y)
+sloppy_isequal(x::T, y::T) where {T<:Complex} =
+    sloppy_isequal(x.re, y.re) && sloppy_isequal(x.im, y.im)
+sloppy_isequal(x::T, y::T) where {T<:AbstractFloat} =
+    isequal(x, y) | (iszero(x) & iszero(y)) | (isnan(x) & isnan(y))
+
+const ≗ = sloppy_isequal
+
+for eq in (:strict_isequal, :sloppy_isequal)
+    @eval begin
+        # Default is false.
+        $eq(x::Any, y::Any) = false
+
+        # Implementation for arrays.
+        function $eq(x::AbstractArray{T,N}, y::AbstractArray{T,N}) where {T,N}
+            axes(x) == axes(y) || return false
+            @inbounds for i in eachindex(x, y)
+                $eq(x[i], y[i]) || return false
+            end
+            return true
+        end
+    end
 end

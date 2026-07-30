@@ -1,9 +1,9 @@
 # Test binary operations on neutral numbers.
 
 using Neutrals
+using Neutrals: ≙, ≗, sloppy_isequal, strict_isequal, maybe_neutral, signed_type
+using Test
 using TypeUtils
-
-isdefined(@__MODULE__, :(≙)) || include("setup.jl")
 
 @testset "Binary" begin
     # NOTE Many tests are wrapped in an `@eval` block so that the values of the arguments

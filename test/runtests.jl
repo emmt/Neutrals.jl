@@ -1,9 +1,9 @@
 module TestingNeutrals
 
 using Neutrals
+using Neutrals: ≙, ≗, maybe_neutral
+using Test
 using TypeUtils
-
-isdefined(@__MODULE__, :(≙)) || include("setup.jl")
 
 using Base: Fix1, Fix2
 

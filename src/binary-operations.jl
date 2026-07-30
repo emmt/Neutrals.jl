@@ -1,5 +1,17 @@
 #----------------------------------------------------------------------- Binary operations -
 
+"""
+    using Test
+    Neutrals.test_binary_operations(x...)
+
+Test binary operations between each of the values in `x...` and each of the neutral number
+instances.
+
+This function is intended to be called in a `@testset` block.
+
+"""
+function test_binary_operations end
+
 # For some binary operations involving neutral numbers, it is sufficient to apply the base
 # method for the arguments promoted according to promotion rules. Other operations must be
 # specialized either because the operation has a specific "hard-coded" result (e.g. `𝟙*x ->
