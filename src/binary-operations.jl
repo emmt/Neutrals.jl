@@ -118,11 +118,9 @@ for x in instances(Neutral), y in instances(Neutral)
                    :(>>)  => :impl_rshft,
                    :(>>>) => :impl_urshft)
         r = @eval $f(value($x), value($y))
-        if r isa Bool
-            @eval $g(::Val{3}, ::$(typeof(x)), ::$(typeof(y))) = $r
-        elseif r ∈ (0, 1, -1) # returns a neutral number if possible
+        if r isa Int && r ∈ (0, 1, -1) # returns a neutral number if possible
             @eval $g(::Val{3}, ::$(typeof(x)), ::$(typeof(y))) = $(Neutral{r}())
-        else # otherwise returns an integer
+        else # otherwise returns the result
             @eval $g(::Val{3}, ::$(typeof(x)), ::$(typeof(y))) = $r
         end
     end
