@@ -1,10 +1,10 @@
 # Test unitful numbers.
 
 using Neutrals
+using Neutrals: ≙, ≗, sloppy_isequal, strict_isequal, maybe_neutral, signed_type, test_binary_operations
+using Test
 using TypeUtils
 using Unitful, Unitful.DefaultSymbols
-
-isdefined(@__MODULE__, :(≙)) || include("setup.jl")
 
 @testset "Unitful quantities" begin
     for x in [3kg, -2.5cm/s]

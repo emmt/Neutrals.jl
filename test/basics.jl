@@ -128,6 +128,55 @@ using TypeUtils
         end
     end
 
+    # Conversions or neutral numbers to another numeric type.
+    for T ∈ [Integer,
+             Bool,
+             Int8, Int16, Int32, Int64, Int128, BigInt,
+             UInt8, UInt16, UInt32, UInt64, UInt128,
+             AbstractFloat,
+             Float16, Float32, Float64, BigFloat,
+             Rational, Rational{Bool}, Rational{Int8}, Rational{UInt8},
+             Complex{Bool}, Complex{Int16}, Complex{UInt16}, Complex{Float32}]
+        for x ∈ instances(Neutral)
+            # `convert(T,x)` and `T(x)` should yield the same result equal to `T(value(x))`
+            # except if `x` is `-ONE` and `T` is unsigned in which case an `InexactError`
+            # exception is thrown.
+            if is_signed(T) || Int(x) ≥ 0 # FIXME is_signed(T) -> !(T <: NonnegativeNumber)
+                y = @inferred(T(x))
+                @eval begin
+                    @test $y isa $T
+                    @test $y == $T(Int($x))
+                    if $T === AbstractFloat
+                        @test $y isa Float64
+                        @test $y === float($x)
+                    end
+                end
+                z = if VERSION < v"1.1"
+                    # For some reasons this inference is broken in tests with Julia 1.0.
+                    convert(T, x)
+                else
+                    @inferred(convert(T, x))
+                end
+                @eval begin
+                    @test typeof($z) == typeof($y)
+                    @test $z == $y
+                end
+            else
+                @eval begin
+                    @test_throws InexactError $T($x)
+                    @test_throws InexactError convert($T, $x)
+                end
+            end
+            if T <: Integer
+                y = @inferred(rem(x, T))
+                @eval begin
+                    @test $y isa $T
+                    @test $y == (Int($x) % $T)
+                end
+            end
+        end
+    end
+
     # Dispatch on other numbers than neutrals.
     @test @inferred(Neutrals.dispatch(π)) === π
     val = 0.0f0

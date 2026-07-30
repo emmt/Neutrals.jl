@@ -84,37 +84,7 @@ storage_type(::Type{Rational{T}}) where {T} = T
     include("assumptions.jl")
     include("basics.jl")
     include("binary.jl")
-
-    @testset "Conversion of $x to type $T" for T in types, x in instances(Neutral)
-        # `convert(T,x)` and `T(x)` should yield the same result equal to `T(value(x))`
-        # except if `x` is `-ONE` and `T` is unsigned in which case an `InexactError`
-        # exception is thrown.
-        if is_signed(T) || Int(x) ≥ 0
-            y = @inferred T(x)
-            @test y isa T
-            @test y == T(Int(x))
-            if VERSION < v"1.1"
-                # For some reasons this inference is broken in tests with Julia 1.0.
-                z = convert(T, x)
-            else
-                z = @inferred convert(T, x)
-            end
-            @test typeof(z) == typeof(y)
-            @test z == y
-            if T === AbstractFloat
-                @test y isa Float64
-                @test y === float(x)
-            end
-        else
-            @test_throws InexactError T(x)
-            @test_throws InexactError convert(T, x)
-        end
-        if T <: Integer
-            y = @inferred rem(x, T)
-            @test y isa T
-            @test y == (Int(x) % T)
-        end
-    end
+    include("booleans.jl")
 
     @testset "Promote rules" begin
         @test promote(true,  ZERO) === (true,  false)
@@ -220,46 +190,6 @@ storage_type(::Type{Rational{T}}) where {T} = T
                 end
             end
         end
-    end
-
-    # Complex{Bool} is treated specifically (see `base/complex.jl`).
-    @testset "Complex($r,$i)" for r in (true, false), i in (true,false)
-        z = Complex(r, i)
-        @test z + ZERO === z
-        @test ZERO + z === z
-        @test z - ZERO === z
-        @test ZERO - z === -z
-        @test ZERO*z === ZERO
-        @test z*ZERO === ZERO
-        @test ZERO/z === ZERO
-        @test_throws DivideError z/ZERO
-        @test z\ZERO === ZERO
-        @test_throws DivideError ZERO\z
-        @test z^ZERO === one(z)
-
-        @test z + ONE === z + true
-        @test ONE + z === z + true
-        @test z - ONE === z - true
-        @test ONE - z === true - z
-        @test ONE*z === z
-        @test z*ONE === z
-        @test ONE/z === inv(z)
-        @test z/ONE === z
-        @test z\ONE === inv(z)
-        @test ONE\z === z
-        @test z^ONE === z
-
-        @test z + (-ONE) === z - true
-        @test (-ONE) + z === z - true
-        @test z - (-ONE) === z + true
-        @test (-ONE) - z === -true - z
-        @test (-ONE)*z === -z
-        @test z*(-ONE) === -z
-        @test (-ONE)/z === -inv(z)
-        @test z/(-ONE) === -z
-        @test z\(-ONE) === -inv(z)
-        @test (-ONE)\z === -z
-        @test z^(-ONE) === inv(z)
     end
 
     @testset "Comparisons with $x" for x in others
