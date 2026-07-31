@@ -16,6 +16,7 @@ using TypeUtils: @public
 @public(
     @dispatch_on_value,
     Dispatch,
+    Dimensionless,
     dispatch,
     impl_add,
     impl_and,
@@ -35,7 +36,9 @@ using TypeUtils: @public
     impl_rshft,
     impl_sub,
     impl_tdv,
+    impl_unit,
     impl_urshft,
+    impl_ustrip,
     impl_xor,
     maybe_neutral,
     recode!,

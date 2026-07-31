@@ -224,8 +224,7 @@ This method can be overridden by specializing it when the first operand is a neu
 that is for `w::Val{1}`.
 
 """
-impl_mul(::Val{1}, x::Neutral{ 0}, y::BareNumber) = ZERO
-impl_mul(::Val{1}, x::Neutral{ 0}, y::AbstractArray{<:BareNumber}) = similar(y, typeof(x))
+impl_mul(::Val{1}, x::Neutral{ 0}, y::Number) = ZERO*impl_unit(y)
 impl_mul(::Val{1}, x::Neutral{ 1}, y::Operand{Number}) = y
 impl_mul(::Val{1}, x::Neutral{-1}, y::Operand{Number}) = -y
 
@@ -238,7 +237,7 @@ a neutral number while the other is a number or an array of numbers. See
 [`Neutrals.impl_add`](@ref) for the interpretation of `w`.
 
 """
-impl_div(::Val{1}, x::Neutral{ 0}, y::BareNumber) = ZERO
+impl_div(::Val{1}, x::Neutral{ 0}, y::Number) = ZERO/impl_unit(y)
 impl_div(::Val{1}, x::Neutral{ 1}, y::Number) = impl_inv(y)
 impl_div(::Val{1}, x::Neutral{-1}, y::Number) = -impl_inv(y)
 

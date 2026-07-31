@@ -128,6 +128,15 @@ const UnsignedNumber = Union{UnsignedReal,UnsignedComplex}
 # `BareNumbers` are dimensionless.
 const BareNumber = Union{Real,Complex}
 
+"""
+    Neutrals.Dimensionless
+
+Singleton type representing dimensionless units. Its only instance, `Dimensionless()`, is
+equivalent to `Unitful.NoDims`.
+
+"""
+struct Dimensionless end
+
 struct Dispatch{T}
     value::T
     Dispatch(x::T) where {T} = new{T}(x)

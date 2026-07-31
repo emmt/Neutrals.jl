@@ -8,21 +8,13 @@ end
 
 using .Unitful: AbstractQuantity, Quantity, NoDims, unit, ustrip
 
-# Preserve units in multiplication and division.
-Neutrals.impl_mul(::Val{1}, x::Neutral{0}, y::AbstractQuantity) = x*unit(y)
+Neutrals.impl_unit(::Type{<:AbstractQuantity{T,D,U}}) where {T,D,U} = U()
 
-Neutrals.impl_div(::Val{1}, x::Neutral{0}, y::AbstractQuantity) = x/unit(y)
+Neutrals.impl_ustrip(x::AbstractQuantity) = ustrip(x)
+Neutrals.impl_ustrip(::Type{<:AbstractQuantity{T,D,U}}) where {T,D,U} = T
 
-Neutrals.impl_mul(::Val{1}, x::Neutral{0}, y::AbstractArray{<:AbstractQuantity}) =
-    similar(y, typeof(x*unit(eltype(y))))
-
-Neutrals.impl_div(::Val{1}, x::Neutral, y::AbstractArray{<:AbstractQuantity{<:Neutral{0}}}) =
-    throw(DivideError())
-Neutrals.impl_div(::Val{1}, x::Neutral, y::AbstractArray{<:AbstractQuantity}) =
-    Neutrals._impl_div(x, y) # to dispatch on x
-#
-#Neutrals._impl_div(x::Neutral{0}, y::AbstractArray{<:AbstractQuantity}) =
-#    similar(y, typeof(x/unit(eltype(y))))
+#Neutrals.impl_div(::Val{1}, x::Neutral, y::AbstractArray{<:AbstractQuantity{<:Neutral{0}}}) =
+#    throw(DivideError()) # FIXME not needed
 
 # Override base methods to call corresponding implementation for binary operations
 # involving a quantity and a neutral number.

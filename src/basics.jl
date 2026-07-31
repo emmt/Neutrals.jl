@@ -21,6 +21,45 @@ Neutral{V}() where {V} = throw(ArgumentError(
     "value "*(V isa Number ? repr(V) : "of type `$(typeof(V))`")
     *" cannot be converted into a neutral number"))
 
+
+#----------------------------------------------------------------------------------- Units -
+#
+# The following methods are replacements of those provided by `Unitful`. They are overridden
+# in `ext/NeutralsUnitfulExt.jl` when `Unitful` is loaded.
+
+Base.inv(u::Dimensionless) = u
+Base.:(^)(u::Dimensionless, n::Integer) = u
+Base.:(*)(::Dimensionless, ::Dimensionless) = Dimensionless()
+Base.:(/)(::Dimensionless, ::Dimensionless) = Dimensionless()
+Base.:(\)(::Dimensionless, ::Dimensionless) = Dimensionless()
+Base.:(*)(x::Number, u::Dimensionless) = x
+Base.:(/)(x::Number, u::Dimensionless) = x
+Base.:(\)(x::Number, u::Dimensionless) = impl_inv(x)
+Base.:(*)(u::Dimensionless, x::Number) = x
+Base.:(/)(u::Dimensionless, x::Number) = impl_inv(x)
+Base.:(\)(u::Dimensionless, x::Number) = x
+
+"""
+    Neutrals.impl_unit(x)
+    Neutrals.impl_unit(typeof(x))
+
+Return the units of `x`. This trait may be extended for the type of dimensionful quantities.
+
+"""
+impl_unit(x::Number) = impl_unit(typeof(x))
+impl_unit(::Type{<:Number}) = Dimensionless()
+
+"""
+    Neutrals.impl_ustrip(x)
+    Neutrals.impl_ustrip(typeof(x))
+
+Return the value of `x` or the type of `x` without units if any. These methods may be
+extended for instances and types of dimensionful quantities.
+
+"""
+impl_ustrip(x::Number) = x
+impl_ustrip(::Type{T}) where {T<:Number} = T
+
 #---------------------------------------------------------------------------- Base methods -
 
 Base.typemin(::Type{Neutral}) = -ONE
