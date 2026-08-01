@@ -21,6 +21,24 @@ Neutral{V}() where {V} = throw(ArgumentError(
     "value "*(V isa Number ? repr(V) : "of type `$(typeof(V))`")
     *" cannot be converted into a neutral number"))
 
+"""
+    Neutral.maybe_neutral(x)
+
+If `x` is an `Int` whose value is one of `0`, `1`, or `-1`, return the neutral number
+`Neutral{x}()`; otherwise, return `x` unchanged. This is equivalent to:
+
+    x isa Int && x ∈ (0, 1, -1) ? Neutral{x}() : x
+
+!!! note
+    This function is not type-stable and is not intended to be efficient. It may be useful
+    to encode methods related to the `Neutral` package (metaprogramming) or in tests.
+
+"""
+maybe_neutral(x) = x
+maybe_neutral(x::Int) =
+    x ===  0 ? ZERO :
+    x ===  1 ?  ONE :
+    x === -1 ? -ONE : x
 
 #----------------------------------------------------------------------------------- Units -
 #
@@ -38,6 +56,31 @@ Base.:(\)(x::Number, u::Dimensionless) = impl_inv(x)
 Base.:(*)(u::Dimensionless, x::Number) = x
 Base.:(/)(u::Dimensionless, x::Number) = impl_inv(x)
 Base.:(\)(u::Dimensionless, x::Number) = x
+
+"""
+    Neutrals.is_dimensionless(x)
+    Neutrals.is_dimensionless(typeof(x))
+
+Return whether `x` is dimensionless. This trait may be extended for the type of dimensionful
+quantities.
+
+"""
+is_dimensionless(x::Number) = is_dimensionless(typeof(x))
+is_dimensionless(::Type{<:Real}) = true
+is_dimensionless(::Type{<:Complex}) = true
+@generated is_dimensionless(::Type{T}) where {T<:Number} = quote
+    $(Expr(:meta,:inline))
+    return $(isequal(one(T), oneunit(T))::Bool)
+end
+
+assert_dimensionless(op::Symbol, x::Number) = assert_dimensionless(op, typeof(x))
+assert_dimensionless(op::Symbol, ::Type{T}) where {T} =
+    is_dimensionless(T) ? nothing : throw_not_dimensionless(op, T)
+
+@noinline throw_not_dimensionless(op::Symbol, x) = throw(ArgumentError(string(
+    "invalid operation `", op,
+    "` involving a neutral number and a non-dimensionless number with units ",
+    impl_unit(x))))
 
 """
     Neutrals.impl_unit(x)
@@ -59,6 +102,19 @@ extended for instances and types of dimensionful quantities.
 """
 impl_ustrip(x::Number) = x
 impl_ustrip(::Type{T}) where {T<:Number} = T
+
+"""
+    Neutrals.impl_oneunit(x)
+    Neutrals.impl_oneunit(typeof(x))
+
+Return one with the type of `x`, including units if any.
+
+"""
+impl_oneunit(x::Number) = impl_oneunit(typeof(x))
+impl_oneunit(::Type{T}) where {T<:Number} = oneunit(T)
+
+# There is no `oneunit` for irrational numbers.
+impl_oneunit(::Type{T}) where {T<:AbstractIrrational} = 1.0
 
 #---------------------------------------------------------------------------- Base methods -
 
@@ -95,7 +151,7 @@ value(::Neutral{x}) where x = x
 value(::Type{<:Neutral{x}}) where x = x
 
 # Conversion rules for bare numeric types. No needs to extend `Base.convert` because
-# `Base.convert(T,x)` amounts to calling `T(x)` for any numeric type `T`.
+# `Base.convert(T,x)` amounts to evaluating `T(x)::T` for any numeric type `T`.
 for T in (Bool,
           Int8, Int16, Int32, Int64, Int128, BigInt,
           UInt8, UInt16, UInt32, UInt64, UInt128,
@@ -290,25 +346,6 @@ end
 #----------------------------------------------------------------------------------- Tests -
 #
 # The following functions may be used for testing the `Neutral` package or extensions of it.
-
-"""
-    Neutral.maybe_neutral(x)
-
-If `x` is an `Int` whose value is one of `0`, `1`, or `-1`, return the neutral number
-`Neutral{x}()`; otherwise, return `x` unchanged. This is equivalent to:
-
-    x isa Int && x ∈ (0, 1, -1) ? Neutral{x}() : x
-
-!!! note
-    This function is not type-stable and is not intended to be efficient. It may be useful
-    to encode methods related to the `Neutral` package (metaprogramming) or in tests.
-
-"""
-maybe_neutral(x) = x
-maybe_neutral(x::Int) =
-    x ===  0 ? ZERO :
-    x ===  1 ?  ONE :
-    x === -1 ? -ONE : x
 
 """
     using Neutral: ≙

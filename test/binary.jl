@@ -61,6 +61,7 @@ using TypeUtils
         end
     end
 
+    # FIXME Use array of numbers, not tuple.
     for x in (true, false,
               0x0, 0x1, 0x5,
               0, 1, -1, 2, 7, -6,

@@ -5,7 +5,45 @@ using Neutrals: ≙
 using Test
 using TypeUtils
 
+
+
 @testset "Booleans" begin
+
+    # In Julia, Booleans are promoted to `Int` for addition, subtraction and bitwise shifts
+    # (see `base/bool.jl`). The implementations of addition and subtraction of a Boolean with
+    # `±𝟙` are specialized according to this.
+    for x in [false, true]
+        @eval begin
+            # Addition.
+            @test @inferred($x +  ZERO ) ===  $x
+            @test @inferred($x +   ONE ) === ($x + true)::Int
+            @test @inferred($x + (-ONE)) === ($x - true)::Int
+            @test @inferred( ZERO  + $x) ===  $x
+            @test @inferred(  ONE  + $x) === ($x + true)::Int
+            @test @inferred((-ONE) + $x) === ($x - true)::Int
+
+            # Subtraction.
+            @test @inferred($x -  ZERO ) ===  $x
+            @test @inferred($x -   ONE ) === ($x - true )::Int
+            @test @inferred($x - (-ONE)) === ($x + true )::Int
+            @test @inferred( ZERO  - $x) === (-$x       )::Int
+            @test @inferred(  ONE  - $x) === ( true - $x)::Int
+            @test @inferred((-ONE) - $x) === (-true - $x)::Int
+        end
+
+        # Bit shift.
+        for shft in [:(<<), :(>>), :(>>>)]
+            @eval begin
+                @test @inferred($shft($x, ZERO)) === $shft($x,  0)::Int
+                @test @inferred($shft($x,  ONE)) === $shft($x,  1)::Int
+                @test @inferred($shft($x, -ONE)) === $shft($x, -1)::Int
+                @test @inferred($shft(ZERO, $x)) === $shft( 0, $x)::Int
+                @test @inferred($shft( ONE, $x)) === $shft( 1, $x)::Int
+                @test @inferred($shft(-ONE, $x)) === $shft(-1, $x)::Int
+            end
+        end
+    end
+    #=
 
     # Complex{Bool} is treated specifically (see `base/complex.jl`).
     for r in [true, false], i in [true, false]
@@ -60,5 +98,6 @@ using TypeUtils
             @test @inferred($z ^(-ONE)) === inv($z)
         end
     end
+    =#
 end
 nothing

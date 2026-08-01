@@ -12,8 +12,20 @@ Versioning](https://semver.org).
   `Neutrals.impl_ustrip` to simplify dealing with dimensionful numbers like
   [`Unitful`](https://github.com/JuliaPhysics/Unitful.jl) quantities.
 
+- Non-exported public symbols `Neutrals.impl_oneunit` to supplement `oneunit`, without
+  type-piracy, for numeric types that do not extend this base function.
+
 - Non-exported public symbols `Neutrals.maybe_neutral`, `Neutrals.test_binary_operations`,
   `Neutral.strict_isequal`, and `Neutral.sloppy_isequal` for tests and introspection.
+
+### Fixed
+
+- `ZERO*x` and `x*ZERO` yield `zero(x)` not `ZERO*unit(x)` for consistency with the division
+  `ZERO/x` and with the multiplication of a number by `false` (considered as a string zero
+  in Julia).
+
+- Division `x/ZERO` with `x` a number always yields ±infinity (never yields NaN, nor throws
+  `DivideError`).
 
 ## Version 0.4.1 (2026-07-27)
 

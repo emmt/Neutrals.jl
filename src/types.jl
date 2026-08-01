@@ -125,8 +125,18 @@ const UnsignedReal = Union{Bool,Unsigned,UnsignedRational}
 const UnsignedComplex = Complex{<:UnsignedReal}
 const UnsignedNumber = Union{UnsignedReal,UnsignedComplex}
 
-# `BareNumbers` are dimensionless.
+# Bare numbers are dimensionless.
 const BareNumber = Union{Real,Complex}
+
+# Non-negative types cannot exactly represent negative numbers like -1.
+const NonnegativeInteger  = Union{Bool, Unsigned}
+const NonnegativeRational = Rational{<:NonnegativeInteger}
+const NonnegativeReal     = Union{NonnegativeInteger, NonnegativeRational}
+const NonnegativeComplex  = Complex{<:NonnegativeReal}
+const NonnegativeNumber   = Union{NonnegativeReal, NonnegativeComplex}
+
+# Big integers and floats have specific rules.
+const BigNumber = Union{BigInt, BigFloat}
 
 """
     Neutrals.Dimensionless

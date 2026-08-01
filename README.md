@@ -28,7 +28,7 @@ Table of contents:
   * [Subtraction](#subtraction)
   * [Multiplication](#multiplication)
   * [Division](#division)
-  * [`div`, `rem`, and `mod`](#div-rem-and-mod)
+  * [Euclidean division](#euclidean-division)
   * [Bitwise Binary Operations](#bitwise-binary-operations)
   * [Bit-shift Operations](#bit-shift-operations)
   * [Comparisons](#comparisons)
@@ -50,9 +50,9 @@ Before version 1.3 of Julia, `𝟘` and `𝟙` cannot be used as names of consta
 
 This section describes the rules involving a neutral number and any other number. For
 [commutative operations](https://en.wikipedia.org/wiki/Commutative_property) like the
-multiplication (`*`), the addition (`+`), binary bitwise operations (`|`, `&`, and `xor`
-or `⊻`), and the comparison for equality (`==`), the same rules apply if the operands are
-exchanged.
+multiplication (`*`), the addition (`+`), binary bitwise operations (`|`, `&`, and `xor` or
+`⊻`), and the comparison for equality (`==` and `isequal`), the same rules apply if the
+operands are exchanged.
 
 ### Addition
 
@@ -82,6 +82,10 @@ x - 𝟙 -> x - one(x)
 x - (-𝟙) -> x + one(x)
 (-𝟙) - x -> -one(x) - x
 ```
+
+If `x` is a Boolean, subtraction with `±𝟙` yields an `Int` (as does the subtraction of
+Booleans in Julia). Otherwise, the last above expression throws an `InexactError` exception
+if negative numbers cannot be represented with the type of `x`.
 
 ### Multiplication
 
@@ -124,7 +128,7 @@ x/-𝟙 -> -x
 ```
 
 
-### `div`, `rem`, and `mod`
+### Euclidean division
 
 Similar rules are implemented for the quotient and remainder of the truncated division
 (`div` or `÷` and `rem` or `%`) and for the modulo (`mod`). In Julia, for `x` and `y`
@@ -143,8 +147,10 @@ neutral number be converted into a `Bool`. Hence, if the neutral operand is `-�
 In binary bitwise operations `|`, `&`, and `xor` (also denoted `⊻`) between an integer `i`
 and a neutral number `n`, the implemented rules are such that the result is as if `𝟘` and
 `𝟙` are converted to the type of `i` while `-𝟙` is assumed to represent a bit mask of the
-same type as `i` with all bits set to `1`, that is `~zero(i)`. For a given binary bitwise
-operation denoted by `⋄`, this corresponds to the following rules:
+same type as `i` with all bits set to `1`, that is `~zero(i)`. If `i` is a signed integer,
+then `~zero(i)` and `-one(i)` are equal.
+
+For a given binary bitwise operation denoted by `⋄`, the implemented rules are:
 
 ``` julia
 i ⋄  𝟘 -> i ⋄ zero(i)
@@ -162,16 +168,17 @@ i & -𝟙 -> i
 i ⊻  𝟘 -> i
 ```
 
-It may be noted that, `i & 𝟘` yields `zero(i)` and not `𝟘` as would do `i*𝟘`. This is
-because `𝟘` is defined relatively to the addition and the multiplication (`+` and `*`),
-not the *bitwise-and* operation (`&`).
+All binary bitwise operations are commutative, hence `i ⋄ n` and `n ⋄ i` yield the same
+result.
+
+It may be noted that, with these rules, `typeof(i ⋄ n) === typeof(i)` because the result is
+as if the two operands were of the type of `i`. This also holds if `i` is a Boolean.
 
 
 ### Bit-shift Operations
 
-In Julia, bit-shifting integer `x` by `n` bits yields a result of the same type as `x`
-except for Booleans for which the result is an `Int`. With the `Neutrals` package, if `n`
-is a neutral number (`𝟘`, `𝟙`, or `-𝟙`), the following rules are implemented:
+In the `Neutrals` package, bit-shifting an integer `x` by a neutral number `n` of bits (`𝟘`,
+`𝟙`, or `-𝟙`) are implemented as follows:
 
 ``` julia
 x <<   𝟘 -> x
@@ -185,11 +192,15 @@ x >>>  𝟙 -> x >>> UInt(1)
 x >>> -𝟙 -> x << UInt(1)
 ```
 
-These rules provide two optimizations: bit shifting `x` by `𝟘` bits leaves `x` unchanged,
-while bit shifting `x` by `±𝟙` bit shifts `x` by one bit in the correct direction where
-`UInt(1)` is to dispatch on the type of `x` not on that of the number of bits. This
-closely reflects the behavior implemented in `base/int.jl` except that bit-shifting by `𝟘`
-always yields the left operand  unchanged even though it is a Boolean.
+In Julia, bit-shifting integer `x` by `n` bits yields a result of the same type as `x`
+except for Booleans for which the result is an `Int`. To respect this rule, `x` is converted
+to an `Int` if it is a Boolean in the above right-hand side expressions.
+
+These rules provide two optimizations: bit shifting `x` by `𝟘` bits leaves `x` unchanged
+(except it is converted to an `Int` if it is a Boolean), while bit shifting `x` by `±𝟙` bit
+shifts `x` by one bit in the correct direction where `UInt(1)` is to dispatch on the type of
+`x` not on that of the number of bits. This closely reflects the behavior implemented in
+`base/int.jl`.
 
 
 ### Comparisons
