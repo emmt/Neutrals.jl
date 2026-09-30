@@ -1,3 +1,39 @@
+"""
+    Neutrals.static_value(x::Neutral)
+    Neutrals.static_value(typeof(x)::Type{<:Neutral})
+
+Return the static value of the neutral number `x`. The result is an integer (of type `Int`)
+whose value only depends on the of `x`.
+
+"""
+static_value(x::Neutral) = static_value(typeof(x))
+static_value(::Type{Neutral{X}}) where {X} = X
+
+# NOTE This method is not type stable and should only be used in a context where its result
+#      can be inferred.
+@inline maybe_neutral(z::Int) = -1 <= z <= 1 ? Neutral{z}() : z
+
+function Base.show(io::IO, x::Neutral)
+    v = static_value(x)
+    if v == -1
+        print(io, VERSION ≥ v"1.3" ? "-𝟙" : "-ONE")
+    elseif v == 0
+        print(io, VERSION ≥ v"1.3" ? "𝟘" : "ZERO")
+    elseif v == 1
+        print(io, VERSION ≥ v"1.3" ? "𝟙" : "ONE")
+    else
+        print(io, "Neutral{", v, "}()")
+    end
+end
+
+Base.summary(io::IO, x::Neutral) = print(io, summary(x))
+function Base.summary(x::Neutral)
+    v = static_value(x)
+    return (v == -1 ? "opposite of neutral element for the multiplication of numbers" :
+            v ==  0 ? "neutral element for the addition of numbers" :
+            v ==  1 ? "neutral element for the multiplication of numbers" : "Neutral{$v}()")
+end
+
 # Constructors, conversion, and basic methods for neutral numbers.
 
 #---------------------------------------------------------------------------- Constructors -
@@ -29,31 +65,6 @@ Base.typemax(::Type{Neutral}) = ONE
 Base.typemax(::Type{<:Neutral{x}}) where {x} = Neutral{x}()
 
 TypeUtils.is_signed(::Type{<:Neutral}) = true
-
-for (T, name, descr) in ((Neutral{0}, "𝟘",
-                          "neutral element for the addition of numbers"),
-                         (Neutral{1}, "𝟙",
-                          "neutral element for the multiplication of numbers"),
-                         (Neutral{-1}, "-𝟙",
-                          "opposite of neutral element for the multiplication of numbers"))
-    mesg = name * " (" * descr * ")"
-    @eval begin
-        Base.show(io::IO, ::$T) = print(io, $name)
-        #Base.show(io::IO, ::MIME"text/plain", ::$T) = print(io, $mesg)
-        Base.summary(io::IO, ::$T) = print(io, $mesg)
-    end
-end
-
-"""
-    Neutrals.static_value(x::Neutral)
-    Neutrals.static_value(typeof(x)::Type{<:Neutral})
-
-Return the static value of the neutral number `x`. The result is an integer (of type `Int`)
-whose value only depends on the of `x`.
-
-"""
-static_value(::Neutral{x}) where x = x
-static_value(::Type{<:Neutral{x}}) where x = x
 
 # Conversion rules for bare numeric types. No needs to extend `Base.convert` because
 # `Base.convert(T,x)` amounts to calling `T(x)` for any numeric type `T`.
