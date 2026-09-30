@@ -445,14 +445,15 @@ end
 # a neutral number.
 
 for (op, f) in (:(<<) => :lshft, :(>>) => :rshft, :(>>>) => :urshft)
-    @eval function Base.$op(x::Neutral, y::Neutral)
-        return maybe_neutral($f(static_value(x), y))
+    @eval Base.$op(x::Neutral, y::Neutral) = maybe_neutral($f(static_value(x), y))
+    for T in (Bool, Integer)
+        @eval Base.$op(x::$T, y::Neutral) = $f(x, y)
     end
 end
 
 to_int(x::Bool) = x ? 1 : 0
 
-Base.:(<<)(x::Integer, y::Neutral) = lshft(x, y)
+# Left shift (<<).
 function lshft(x::Bool, y::Neutral)
     ispositive(y) && return to_int(x) << (static_value(y) % UInt)
     isnegative(y) && return 0
@@ -464,7 +465,7 @@ function lshft(x::Integer, y::Neutral)
     return x
 end
 
-Base.:(>>)(x::Integer, y::Neutral) = rshft(x, y)
+# Right shift (>>).
 function rshft(x::Bool, y::Neutral)
     ispositive(y) && return 0
     isnegative(y) && return to_int(x) << ((-static_value(y)) % UInt)
@@ -476,7 +477,7 @@ function rshft(x::Integer, y::Neutral)
     return x
 end
 
-Base.:(>>>)(x::Integer, y::Neutral) = urshft(x, y)
+# Unsigned right shift (>>).
 function urshft(x::Bool, y::Neutral)
     ispositive(y) && return 0
     isnegative(y) && return to_int(x) << ((-static_value(y)) % UInt)
