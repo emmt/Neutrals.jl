@@ -39,9 +39,9 @@ using TypeUtils: @public
     impl_xor,
     recode!,
     recode,
+    static_value,
     type_common,
     type_signed,
-    value,
 )
 
 if !isdefined(Base, :get_extension)
@@ -50,7 +50,7 @@ end
 
 include("types.jl")
 include("dispatch.jl")
-include("basics.jl")
+include("methods.jl")
 include("binary-operations.jl")
 
 @deprecate is_dimensionless(x) TypeUtils.is_unitless(x) false
