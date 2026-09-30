@@ -44,23 +44,11 @@ using TypeUtils: @public
     type_signed,
 )
 
-if !isdefined(Base, :get_extension)
-    using Requires
-end
-
 include("types.jl")
 include("dispatch.jl")
 include("methods.jl")
 include("binary-operations.jl")
 
 @deprecate is_dimensionless(x) TypeUtils.is_unitless(x) false
-
-function __init__()
-    @static if !isdefined(Base, :get_extension)
-        # Extend methods when other packages are loaded.
-        @require Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d" include(
-            "../ext/NeutralsUnitfulExt.jl")
-    end
-end
 
 end

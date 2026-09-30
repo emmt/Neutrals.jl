@@ -4,19 +4,14 @@ authors = ["Éric Thiébaut <eric.thiebaut@univ-lyon1.fr> and contributors"]
 version = "0.4.1"
 
 [deps]
-Requires = "ae029012-a4dd-5104-9daa-d747884805df"
 TypeUtils = "c3b1956e-8857-4d84-9b79-890df85b1e67"
 
 [compat]
 Aqua = "0.8"
-Requires = "1"
 Test = "<0.0.1, 1"
 TypeUtils = "2"
 Unitful = "1"
 julia = "1"
-
-[extensions]
-NeutralsUnitfulExt = "Unitful"
 
 [extras]
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
@@ -25,6 +20,3 @@ Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 
 [targets]
 test = ["Aqua", "Test", "Unitful"]
-
-[weakdeps]
-Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
