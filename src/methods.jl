@@ -121,6 +121,19 @@ for T in (BigInt, BigFloat)
     end
 end
 
+# For integers, `Base.rem(x, T)` may be used to "convert" `x` to type `T`.
+Base.rem(x::Neutral, ::Type{Integer}) = x
+Base.rem(x::Neutral, ::Type{Neutral}) = x
+Base.rem(x::Neutral, ::Type{T}) where {T<:Integer} = static_value(x) % T
+for T in (:Bool, :BigInt) # remove ambiguities for these types
+    @eval Base.rem(x::Neutral, ::Type{$T}) = static_value(x) % $T
+end
+
+Base.modf(x::Neutral) = (ZERO, x)
+
+Base.widen(x::Neutral) = x
+Base.widen(::Type{T}) where {T<:Neutral} = T
+
 # Outer constructors.
 (::Type{Neutral})(x::Neutral) = x
 (::Type{Neutral})(x::Int) = Neutral{x}()
@@ -154,20 +167,6 @@ TypeUtils.is_static_number(::Type{<:Neutral}) = true
 TypeUtils.get_precision(::Type{<:Neutral}) = AbstractFloat
 TypeUtils.adapt_precision(::Type{<:TypeUtils.Precision}, x::Neutral) = x
 TypeUtils.adapt_precision(::Type{<:TypeUtils.Precision}, ::Type{T}) where {T<:Neutral} = T
-
-#------------------------------------------------------------------------ Unary operations -
-
-# For integers, `Base.rem(x, T)` may be used to "convert" `x` to type `T`.
-Base.rem(x::Neutral, ::Type{Integer}) = x
-Base.rem(::Neutral{x}, ::Type{T}) where {x,T<:Integer} = x % T
-for T in (:Bool, :BigInt) # remove ambiguities for these types
-    @eval Base.rem(::Neutral{x}, ::Type{$T}) where {x} = x % $T
-end
-
-Base.modf(x::Neutral) = (ZERO, x)
-
-Base.widen(x::Neutral) = x
-Base.widen(::Type{T}) where {T<:Neutral} = T
 
 #------------------------------------------------------------------------- Promotion rules -
 
