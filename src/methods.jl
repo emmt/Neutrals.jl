@@ -171,58 +171,6 @@ Base.widen(::Type{T}) where {T<:Neutral} = T
 
 #------------------------------------------------------------------------- Promotion rules -
 
-"""
-    Neutrals.type_common(x) -> T
-    Neutrals.type_common(typeof(x)) -> T
-
-Return the dimensionless type `T` to convert a neutral number operand in common binary
-operations (additions, subtractions, and comparisons) when the other operand is of the type
-of `x`.
-
-See also [`Neutrals.type_signed`](@ref), [`Neutrals.impl_add`](@ref),
-[`Neutrals.impl_sub`](@ref), [`Neutrals.impl_eq`](@ref), [`Neutrals.impl_lt`](@ref),
-[`Neutrals.impl_le`](@ref), and [`Neutrals.impl_cmp`](@ref).
-
-"""
-type_common(x::Number) = type_common(typeof(x))
-type_common(::Type{T}) where {T<:Number} = _type_common(bare_type(T))
-_type_common(::Type{T}) where {T<:Real} = T
-_type_common(::Type{T}) where {T<:AbstractIrrational} = Float64
-_type_common(::Type{Rational{T}}) where {T} = _type_common(T)
-_type_common(::Type{Complex{T}}) where {T} = _type_common(T)
-_type_common(::Type{BigInt}) = Clong # see `base/gmp.jl`
-_type_common(::Type{BigFloat}) = Clong # see `base/mpfr.jl`
-
-"""
-    Neutrals.type_signed(x) -> T
-    Neutrals.type_signed(typeof(x)) -> T
-
-Return the dimensionless type `T` to convert a neutral number operand in some binary
-operations (quotient or remainder of truncated division, and modulo) when the other operand
-is of the type of `x` and when the signedness of the neutral number must be preserved to
-reflect the usual behavior of the binary operation in Julia.
-
-See also [`Neutrals.type_common`](@ref), [`Neutrals.impl_tdv`](@ref),
-[`Neutrals.impl_rem`](@ref), and [`Neutrals.impl_mod`](@ref).
-
-"""
-type_signed(x::Number) = type_signed(typeof(x))
-type_signed(::Type{T}) where {T<:Number} = _type_signed(bare_type(T))
-
-# NOTE For `div`, `rem`, and `mod` with a big number, the other operand is promoted to a
-#      big number. Thus, the rule for `Real` is also suitable for big numbers.
-_type_signed(::Type{T}) where {T<:Real} = T
-_type_signed(::Type{T}) where {T<:AbstractIrrational} = Float64
-_type_signed(::Type{Rational{T}}) where {T} = _type_signed(T)
-_type_signed(::Type{Complex{T}}) where {T} = _type_signed(T)
-_type_signed(::Type{T}) where {T<:Signed} = T
-
-# NOTE Not all versions of Julia implement `signed(T)`.
-for (U, S) in (:UInt8 => :Int8, :UInt16 => :Int16, :UInt32 => :Int32,
-               :UInt64 => :Int64, :UInt128 => :Int128)
-    @eval _type_signed(::Type{$U}) = $S
-end
-
 # Extend `Base.promote_rule` when one of the argument is a neutral number. For two neutral
 # numbers, the default is to convert them to `Int`. For `Bool`, the symmetric promote rule
 # must be given to avoid stack overflows.

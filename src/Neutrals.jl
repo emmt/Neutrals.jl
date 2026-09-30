@@ -21,8 +21,6 @@ using TypeUtils: @public
     recode!,
     recode,
     static_value,
-    type_common, # FIXME delete
-    type_signed, # FIXME delete
 )
 
 include("types.jl")

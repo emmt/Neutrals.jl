@@ -29,6 +29,9 @@ breaking changes (see below) but in most cases the end-user shall see no differe
 
   - For a complex number `z`, `z/𝟘 -> complex(real(z)/𝟘, imag(z)/𝟘)`.
 
+- Non-exported public functions `Neutrals.type_complex` and `Neutrals.type_signed` have been
+  suppressed.
+
 
 ### Changed
 
