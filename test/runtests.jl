@@ -1,6 +1,7 @@
 using Neutrals
 using Neutrals: infinity, ispositive, isnegative, static_value
 using Test
+using TypeUtils
 using Aqua
 
 @testset "Neutrals package" begin
@@ -53,9 +54,11 @@ using Aqua
     sub(x::Union{Real,Complex}, y::Neutral) =
         iszero(y) ? x : x - add_op(typeof(x), y)
 
-    @test typeof(ZERO) === Neutral{ 0}
-    @test typeof( ONE) === Neutral{ 1}
-    @test typeof(-ONE) === Neutral{-1}
+    @testset "Constants" begin
+        @test typeof(ZERO) === Neutral{ 0}
+        @test typeof( ONE) === Neutral{ 1}
+        @test typeof(-ONE) === Neutral{-1}
+    end
 
     @testset "Non-exported public API" begin
         @test @inferred(static_value(ZERO)) ===  0
@@ -115,6 +118,30 @@ using Aqua
         @test @inferred(signbit(ZERO)) === false
         @test @inferred(signbit( ONE)) === false
         @test @inferred(signbit(-ONE)) === true
+
+        @test @inferred(abs(ZERO)) === ZERO
+        @test @inferred(abs( ONE)) ===  ONE
+        @test @inferred(abs(-ONE)) ===  ONE
+
+        @test @inferred(abs2(ZERO)) === ZERO
+        @test @inferred(abs2( ONE)) ===  ONE
+        @test @inferred(abs2(-ONE)) ===  ONE
+
+        @test @inferred(Base.checked_abs(ZERO)) === ZERO
+        @test @inferred(Base.checked_abs( ONE)) ===  ONE
+        @test @inferred(Base.checked_abs(-ONE)) ===  ONE
+
+        @test @inferred(iseven(ZERO)) === true
+        @test @inferred(iseven( ONE)) === false
+        @test @inferred(iseven(-ONE)) === false
+
+        @test @inferred(isodd(ZERO)) === false
+        @test @inferred(isodd( ONE)) === true
+        @test @inferred(isodd(-ONE)) === true
+
+        @test @inferred(angle(ZERO)) === ZERO
+        @test @inferred(angle( ONE)) === ZERO
+        @test @inferred(angle(-ONE)) === π
 
         @test @inferred(inv(ZERO)) ===  Inf
         @test @inferred(inv( ONE)) ===  ONE
@@ -272,6 +299,64 @@ using Aqua
             @test x isa BigFloat
             @test x == -1
         end
+    end
+
+    @testset "Conversion to `AbstractIrrational`" begin
+        @test_throws InexactError typeof(π)(ZERO)
+        @test_throws InexactError typeof(π)( ONE)
+        @test_throws InexactError typeof(π)(-ONE)
+        @test_throws InexactError convert(typeof(π), ZERO)
+        @test_throws InexactError convert(typeof(π),  ONE)
+        @test_throws InexactError convert(typeof(π), -ONE)
+    end
+
+    @testset "Outer constructors" begin
+        @test @inferred(Neutral{ 0}()) === ZERO
+        @test @inferred(Neutral{ 1}()) ===  ONE
+        @test @inferred(Neutral{-1}()) === -ONE
+
+        @test @inferred(Neutral(ZERO)) === ZERO
+        @test @inferred(Neutral( ONE)) ===  ONE
+        @test @inferred(Neutral(-ONE)) === -ONE
+
+        @test Neutral( 0) === ZERO
+        @test Neutral( 1) ===  ONE
+        @test Neutral(-1) === -ONE
+
+        @test Neutral( UInt8(0)) === ZERO
+        @test Neutral( Int16(1)) ===  ONE
+        @test Neutral(-Int16(1)) === -ONE
+
+        @test_throws ArgumentError Neutral(+2)
+        @test_throws ArgumentError Neutral(-2)
+
+        @test_throws InexactError typeof(π)( ONE)
+        @test_throws InexactError typeof(π)(-ONE)
+        @test_throws InexactError convert(typeof(π), ZERO)
+        @test_throws InexactError convert(typeof(π),  ONE)
+        @test_throws InexactError convert(typeof(π), -ONE)
+    end
+
+    @testset "Test `TypeUtils` methods" begin
+        @test @inferred(is_signed(ZERO)) === true
+        @test @inferred(is_signed( ONE)) === true
+        @test @inferred(is_signed(-ONE)) === true
+
+        @test @inferred(is_static_number(ZERO)) === true
+        @test @inferred(is_static_number( ONE)) === true
+        @test @inferred(is_static_number(-ONE)) === true
+
+        @test @inferred(get_precision(ZERO)) === AbstractFloat
+        @test @inferred(get_precision( ONE)) === AbstractFloat
+        @test @inferred(get_precision(-ONE)) === AbstractFloat
+
+        @test @inferred(adapt_precision(Float32,  ZERO)) === ZERO
+        @test @inferred(adapt_precision(Float64,   ONE)) ===  ONE
+        @test @inferred(adapt_precision(BigFloat, -ONE)) === -ONE
+
+        @test @inferred(adapt_precision(Float32,  typeof(ZERO))) === typeof(ZERO)
+        @test @inferred(adapt_precision(Float64,  typeof( ONE))) === typeof( ONE)
+        @test @inferred(adapt_precision(BigFloat, typeof(-ONE))) === typeof(-ONE)
     end
 
     bits_unsigned = [UInt8, UInt16, UInt32, UInt64]
@@ -656,6 +741,64 @@ using Aqua
         @test all([cmp(x,  ZERO ) === cmp( x,  0) for x in r])
         @test all([cmp(x,   ONE ) === cmp( x,  1) for x in r])
         @test all([cmp(x, (-ONE)) === cmp( x, -1) for x in r])
+    end
+
+    @testset "Usage examples" begin
+        x = [Inf, NaN, -Inf, -NaN]
+        @test all(iszero, ZERO .* x)
+        y = similar(x)
+        @. y = ZERO*x
+        @test all(iszero, y)
+        copyto!(y, 1:length(y))
+        z = similar(y)
+        @. z = ONE*y
+        @test all(yz -> isequal(yz...), zip(y, z))
+        @. z = (-ONE)*y
+        @test all(yz -> isequal(yz...), zip(-y, z))
+        @. z = 2*y + ZERO*x
+        @test all(yz -> isequal(yz...), zip(2y, z))
+    end
+
+    @testset "Multipliers" begin
+        x = Float32[0,1,2]
+        @test @inferred(adapt_multiplier_precision(ZERO, x)) === ZERO
+        @test @inferred(adapt_multiplier_precision( ONE, x)) ===  ONE
+        @test @inferred(adapt_multiplier_precision(-ONE, x)) === -ONE
+        @test @inferred(adapt_multiplier_precision(ZERO, typeof(x))) === ZERO
+        @test @inferred(adapt_multiplier_precision( ONE, typeof(x))) ===  ONE
+        @test @inferred(adapt_multiplier_precision(-ONE, typeof(x))) === -ONE
+        @test @inferred(adapt_multiplier_precision(eltype(x), ZERO)) === ZERO
+        @test @inferred(adapt_multiplier_precision(eltype(x),  ONE)) ===  ONE
+        @test @inferred(adapt_multiplier_precision(eltype(x), -ONE)) === -ONE
+    end
+
+    @testset "Dispatch objects" begin
+        @test @inferred(Neutrals.dispatch(ZERO)) === ZERO
+        @test @inferred(Neutrals.dispatch( ONE)) ===  ONE
+        @test @inferred(Neutrals.dispatch(-ONE)) === -ONE
+        @test @inferred(Neutrals.dispatch(   π)) === π
+        val = 0.0f0
+        obj = @inferred(Neutrals.dispatch(val))
+        @test obj isa Neutrals.Dispatch{typeof(val)}
+        @test eltype(obj) === typeof(val)
+        @test eltype(typeof(obj)) === typeof(val)
+        @test obj[] === val
+        @test @inferred(Neutrals.dispatch(obj)) === obj
+        @test @inferred(Neutrals.Dispatch(obj)) === obj
+        val = 1//2
+        obj = @inferred(Neutrals.dispatch(val))
+        @test obj isa Neutrals.Dispatch{typeof(val)}
+        @test eltype(obj) === typeof(val)
+        @test eltype(typeof(obj)) === typeof(val)
+        @test obj[] === val
+        @test @inferred(Neutrals.dispatch(obj)) === obj
+        @test @inferred(Neutrals.Dispatch(obj)) === obj
+    end
+
+    @testset "Macros" begin
+        ex = @macroexpand Neutrals.@dispatch_on_value β unsafe_xpby!(dst, x, β, y)
+        @test ex isa Expr
+        @test ex.head == :if
     end
 
     @testset "Code quality (Aqua.jl)" begin
