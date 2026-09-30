@@ -128,6 +128,26 @@ const UnsignedNumber = Union{UnsignedReal,UnsignedComplex}
 # `BareNumbers` are dimensionless.
 const BareNumber = Union{Real,Complex}
 
+const BigReal = Union{BigInt, BigFloat}
+
+# Tuple of known signed integer bits types.
+const BITS_SIGNED = @eval $(Expr(:tuple, Int8, Int16, Int32, Int64,
+                                 (isdefined(Base, :Int128) ? (:Int128,) : ())...,))
+
+# Tuple of known unsigned integer bits types.
+const BITS_UNSIGNED = @eval $(Expr(:tuple, UInt8, UInt16, UInt32, UInt64,
+                                   (isdefined(Base, :UInt128) ? (:UInt128,) : ())...,))
+
+# Tuple of known integer bits types (Boolean, unsigned, and signed ones).
+const BITS_INTEGER = (Bool, BITS_UNSIGNED..., BITS_SIGNED...,)
+
+# Tuple of known floating-point bits types.
+const BITS_FLOAT = @eval $(Expr(:tuple, (isdefined(Base, :Float16) ? (:Float16,) : ())...,
+                                Float32, Float64))
+
+# Tuple of known real bits types.
+const BITS_REAL = (BITS_INTEGER..., BITS_FLOAT...,)
+
 struct Dispatch{T}
     value::T
     Dispatch(x::T) where {T} = new{T}(x)

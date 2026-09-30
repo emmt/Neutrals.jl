@@ -34,7 +34,92 @@ function Base.summary(x::Neutral)
             v ==  1 ? "neutral element for the multiplication of numbers" : "Neutral{$v}()")
 end
 
-# Constructors, conversion, and basic methods for neutral numbers.
+for (f, n) in (:zero => ZERO, :one => ONE, :oneunit => ONE)
+    @eval begin
+        Base.$f(x::Neutral) = $f(typeof(x))
+        Base.$f(::Type{<:Neutral}) = $n
+    end
+end
+
+for (f, ex) in (:iszero     => :(static_value(x) == 0),
+                :isone      => :(static_value(x) == 1),
+                :ispositive => :(static_value(x) > 0),
+                :isnegative => :(static_value(x) < 0),
+                :sign       => :(static_value(x) < 0 ? -1 : static_value(x) > 0 ? 1 : 0))
+    g = isdefined(Base, f) ? :(Base.$f) : f
+    @eval $g(x::Neutral) = $ex
+end
+
+Base.signbit(x::Neutral) = isnegative(x)
+
+for f in (:abs, :abs2)
+    @eval Base.$f(x::Neutral) = Neutral{$f(static_value(x))}()
+end
+Base.checked_abs(x::Neutral) = abs(x)
+
+Base.isodd(x::Neutral) = (static_value(x) & 1) == 1
+Base.iseven(x::Neutral) = (static_value(x) & 1) == 0
+
+Base.angle(x::Neutral) = isnegative(x) ? π : ZERO
+
+Base.inv(x::Neutral) = ONE/x
+
+# Extend unary `-` for neutral numbers. Unary `+`, `*`, `&`, `|`, and `xor` do not need to
+# be extended for numbers (see base/operators.jl).
+Base.:(-)(x::Neutral) = Neutral{-static_value(x)}()
+
+# Bitwise not. Yield an `Int` if result cannot be represented by a neutral number.
+Base.:(~)(x::Neutral) = maybe_neutral(~static_value(x))
+
+#----------------------------------------------------------------------------- Conversions -
+#
+# Numeric type constructors are called by `convert` in its default implementation. We
+# therefore extend numeric type constructors, not `convert`.
+#
+# Abstract numeric type constructors (Number, Real, Integer, and Neutral need no
+# specialization).
+(::Type{Signed})(x::Neutral) = Int(x)
+(::Type{Unsigned})(x::Neutral) = UInt(x)
+(::Type{Rational})(x::Neutral) = Rational{Int}(static_value(x), 1)
+(::Type{AbstractFloat})(x::Neutral) = float(static_value(x)) # also used by `float(x)`
+(::Type{T})(x::Neutral) where {T<:AbstractIrrational} = throw(InexactError(:convert, T, x))
+function (::Type{Complex})(x::Neutral) # also used by `complex(x)`
+    iszero(x) && return Complex(false, false)
+    isone(x) && return Complex(true, false)
+    return Complex(static_value(x), 0)
+end
+
+# Concrete numeric constructors. `Complex{T}` and `Rational{T}` need not be extended.
+#Base.Rational{T}(x::Neutral) where {T<:Integer} = Rational(T(x))
+#Base.Complex{T}(x::Neutral) where {T<:Real} = Complex(T(x), zero(T))
+(::Type{Int})(x::Neutral) = static_value(x)
+function (::Type{Bool})(x::Neutral)
+    iszero(x) && return false
+    isone(x) && return true
+    throw(InexactError(:Bool, Bool, x))
+end
+
+# Conversion rules for bare numeric types. No needs to extend `Base.convert` because
+# `Base.convert(T,x)` amounts to calling `T(x)` for any numeric type `T`. Direct conversion
+# by `T(x)` for `T` one of the basic numeric types is also needed by some functions. For
+# example, `Float32(x)` and `Float64(x)` are used by `copysign` and `flipsign`.
+for T in BITS_REAL
+    if T <: Unsigned
+        @eval function (::Type{$T})(x::Neutral)
+            isnegative(x) && throw(InexactError($(QuoteNode(Symbol(T))), $T, x))
+            return $T(static_value(x))
+        end
+    elseif !(T <: Union{Bool,Int})
+        @eval (::Type{$T})(x::Neutral) = $T(static_value(x))
+    end
+end
+for T in (BigInt, BigFloat)
+    @eval function (::Type{$T})(x::Neutral)
+        iszero(x) && return zero($T)
+        isone(x) && return one($T)
+        return $T(aritmetic_operand($T, x))
+    end
+end
 
 #---------------------------------------------------------------------------- Constructors -
 
@@ -64,83 +149,16 @@ Base.typemin(::Type{<:Neutral{x}}) where {x} = Neutral{x}()
 Base.typemax(::Type{Neutral}) = ONE
 Base.typemax(::Type{<:Neutral{x}}) where {x} = Neutral{x}()
 
+#------------------------------------------------------- Extend methods from other packages -
+
+# Extend methods defined in `TypeUtils`.
 TypeUtils.is_signed(::Type{<:Neutral}) = true
-
-# Conversion rules for bare numeric types. No needs to extend `Base.convert` because
-# `Base.convert(T,x)` amounts to calling `T(x)` for any numeric type `T`.
-for T in (Bool,
-          Int8, Int16, Int32, Int64, Int128, BigInt,
-          UInt8, UInt16, UInt32, UInt64, UInt128,
-          Float16, Float32, Float64, BigFloat)
-    @eval (::Type{$T})(x::Neutral) = $T(static_value(x))
-    if !is_signed(T)
-        @eval (::Type{$T})(x::Neutral{-1}) = throw(InexactError(:convert, $T, x))
-    end
-end
-(::Type{Number})(x::Neutral) = x
-(::Type{Real})(x::Neutral) = x
-(::Type{Integer})(x::Neutral) = x
-(::Type{Rational{T}})(x::Neutral) where {T<:Integer} = Rational(T(x))
-(::Type{Rational})(x::Neutral) = Rational(static_value(x), 1)
-(::Type{Complex{T}})(x::Neutral) where {T<:Real} = Complex(T(x), T(0))
-(::Type{Complex})(x::Neutral) = Complex(static_value(x), 0)
-(::Type{AbstractFloat})(x::Neutral) = float(static_value(x))
-(::Type{T})(x::Neutral) where {T<:AbstractIrrational} = throw(InexactError(:convert, T, x))
-
-# Extend precision methods defined in `TypeUtils`.
 TypeUtils.is_static_number(::Type{<:Neutral}) = true
 TypeUtils.get_precision(::Type{<:Neutral}) = AbstractFloat
 TypeUtils.adapt_precision(::Type{<:TypeUtils.Precision}, x::Neutral) = x
-TypeUtils.adapt_precision(::Type{<:TypeUtils.Precision}, ::Type{X}) where {X<:Neutral} = X
+TypeUtils.adapt_precision(::Type{<:TypeUtils.Precision}, ::Type{T}) where {T<:Neutral} = T
 
 #------------------------------------------------------------------------ Unary operations -
-
-# Extend unary `-` for neutral numbers. Unary `+`, `*`, `&`, `|`, and `xor` do not need to
-# be extended for numbers (see base/operators.jl).
-Base.:(-)(x::Neutral{0}) = ZERO
-Base.:(-)(x::Neutral{1}) = Neutral{-1}() # NOTE do not use expression `-ONE` here
-Base.:(-)(x::Neutral{-1}) = ONE
-
-# Bitwise not. Yield an `Int` if result cannot be represented by a neutral number.
-Base.:(~)(x::Neutral{0}) = -ONE
-Base.:(~)(x::Neutral{-1}) = ZERO
-Base.:(~)(::Neutral{x}) where {x} = ~x
-
-# Extend unary functions for neutral numbers (following order in base/number.jl).
-Base.iszero(x::Neutral) = false
-Base.iszero(x::Neutral{0}) = true
-#
-Base.isone(x::Neutral) = false
-Base.isone(x::Neutral{1}) = true
-#
-Base.isfinite(x::Neutral) = true
-#
-Base.sign(x::Union{Neutral{0},Neutral{1},Neutral{-1}}) = static_value(x)
-#
-Base.signbit(x::NonNegativeNeutral) = false
-Base.signbit(x::Neutral) = true
-#
-for f in (:abs, :abs2)
-    @eval begin
-        Base.$f(x::Neutral{V}) where {V} = Neutral{$f(V)}()
-    end
-end
-Base.checked_abs(x::Neutral) = abs(x)
-#
-Base.angle(::NonNegativeNeutral) = ZERO
-Base.angle(::Neutral) = π
-#
-Base.inv(x::Neutral{0}) = throw(DivideError())
-Base.inv(x::Union{Neutral{1},Neutral{-1}}) = x
-#
-Base.zero(::Neutral) = ZERO
-Base.zero(::Type{<:Neutral}) = ZERO
-#
-Base.one(::Neutral) = ONE
-Base.one(::Type{<:Neutral}) = ONE
-#
-Base.isodd(::Neutral{x}) where {x} = isodd(x)
-Base.iseven(::Neutral{x}) where {x} = iseven(x)
 
 # For integers, `Base.rem(x, T)` may be used to "convert" `x` to type `T`.
 Base.rem(x::Neutral, ::Type{Integer}) = x
@@ -239,4 +257,37 @@ Base.last(r::UnitRange{T}) where {T<:Neutral} = T()
 # UnitRange with start and stop being the same neutral number. Such as `𝟙:𝟙`.
 if VERSION < v"1.8.0-beta1" && isdefined(Base, :unitrange_last)
     Base.unitrange_last(start::T, stop::T) where {T<:Neutral} = stop
+end
+
+#------------------------------------------------------------------- Arithmetic operations -
+
+"""
+    Neutrals.aritmetic_operand(T, x::Neutral) -> xp
+
+Return a value `xp` equivalent to that of `x` and with efficient type for an arithmetic
+operation like the addition involving an operand of type `T` and operand `x`.
+
+# See also
+
+[`Neutrals.comparative_operand`](@ref) for comparison operations and
+[`Neutrals.bitwise_operand`](@ref) for bitwise operations.
+
+"""
+function aritmetic_operand(::Type{T}, x::Neutral) where {T<:Real}
+    return convert(T, x)
+end
+function aritmetic_operand(::Type{T}, x::Neutral) where {T<:Bool}
+    return static_value(x)::Int
+end
+function aritmetic_operand(::Type{T}, x::Neutral) where {T<:Unsigned}
+    return isnegative(x) ? -signed(convert(T, -x)) : convert(T, x) # FIXME signed not needed?
+end
+function aritmetic_operand(::Type{<:Union{Rational{T},Complex{T}}}, x::Neutral) where {T}
+    return convert(T, x)
+end
+function aritmetic_operand(::Type{<:AbstractIrrational}, x::Neutral)
+    return float(x)
+end
+function aritmetic_operand(::Type{T}, x::Neutral) where {T<:BigReal}
+    return isnegative(x) ? Clong(x) : Culong(x)
 end
