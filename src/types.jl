@@ -127,6 +127,7 @@ const UnsignedNumber = Union{UnsignedReal,UnsignedComplex}
 
 # `BareNumbers` are dimensionless.
 const BareNumber = Union{Real,Complex}
+const NonnegativeReal = Union{Bool, Unsigned, Rational{Unsigned}}
 
 const BigReal = Union{BigInt, BigFloat}
 

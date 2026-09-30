@@ -17,38 +17,19 @@ using TypeUtils: @public
     @dispatch_on_value,
     Dispatch,
     dispatch,
-    impl_add,
-    impl_and,
-    impl_cmp,
-    impl_div,
-    impl_eq,
-    impl_inv,
-    impl_isless,
-    impl_le,
-    impl_lshft,
-    impl_lt,
-    impl_mod,
-    impl_mul,
-    impl_or,
-    impl_pow,
-    impl_rem,
-    impl_rshft,
-    impl_sub,
-    impl_tdv,
-    impl_urshft,
-    impl_xor,
+    infinity,
     recode!,
     recode,
     static_value,
-    type_common,
-    type_signed,
+    type_common, # FIXME delete
+    type_signed, # FIXME delete
 )
 
 include("types.jl")
 include("dispatch.jl")
 include("methods.jl")
-include("binary-operations.jl")
 
+# FIXME cleanup
 @deprecate is_dimensionless(x) TypeUtils.is_unitless(x) false
 
 end

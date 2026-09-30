@@ -6,9 +6,39 @@ Versioning](https://semver.org).
 
 ## Unreleased
 
+Code has been enormously simplified and rules updated to yield more consistent results.
+Unitful numbers no longer require specific treatment. As a consequence, there are a few
+breaking changes (see below) but in most cases the end-user shall see no differences.
+
+
+### Breaking changes
+
+- `promote_rule` for a Boolean and a neutral number always yields `Int` (previously, it used
+  to yield `Int` for a negative neutral number and `Bool` otherwise).
+
+- Division by `𝟘` no longer throws `DivideError` but rather yields a sensitive result
+  considering that `𝟘` is a strong zero:
+
+  - For neutral operands: `𝟘/𝟘 -> NaN`, `𝟙/𝟘 -> Inf`, and  `-𝟙/𝟘 -> -Inf`. This rule
+    applies for `inv(𝟘) -> 𝟙/𝟘 -> Inf`.
+
+  - For a non-neutral real number `x`, `x/𝟘 -> ±Neutrals.infinity(x)` that is infinity if
+    `x >= 0` or minus infinity if `x < 0` and where `Neutrals.infinity(x)` is the rational
+    `one(T)//zero(T)` if `x` is integer of type `T` or rational with numerator and
+    denominator of type `T`.
+
+  - For a complex number `z`, `z/𝟘 -> complex(real(z)/𝟘, imag(z)/𝟘)`.
+
+
 ### Changed
 
 - Non-exported public function `Neutrals.value` renamed `Neutrals.static_value`.
+
+### Added
+
+- Bit-shift operations are supported for a leftmost operand which is neutral number. In this
+  case, the result is an `Int`. Previously only the right-most operand (the number of bits
+  to shift) could be a neutral number.
 
 
 ## Version 0.4.1 (2026-07-27)

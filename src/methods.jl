@@ -125,8 +125,6 @@ end
 
 # For numbers, there is no needs to extend `Base.convert` with the following "conversion"
 # constructors as `Base.convert(T, x)` falls back to call `T(x)::T`.
-Neutral(x::Neutral) = x
-Neutral{V}(x::Neutral{V}) where {V} = x
 Neutral{V}(x::Neutral) where {V} = throw(InexactError(:convert, Neutral{V}, x))
 Neutral(x::Int) = Neutral{x}()
 for type in (:Number, :Rational, :Complex, :BigFloat) # `Number` is not enough to get rid of ambiguities
@@ -228,24 +226,38 @@ end
 
 # Extend `Base.promote_rule` when one of the argument is a neutral number. For two neutral
 # numbers, the default is to convert them to `Int`. For `Bool`, the symmetric promote rule
-# must be given to avoid overflows.
+# must be given to avoid stack overflows.
 Base.promote_rule(::Type{<:Neutral}, ::Type{<:Neutral}) = Int
-Base.promote_rule(::Type{<:Neutral}, ::Type{T}) where {T<:Number} = T
+Base.promote_rule(::Type{<:Neutral}, ::Type{T}) where {T<:Union{Real,Complex}} = T
 Base.promote_rule(::Type{<:Neutral}, ::Type{<:AbstractIrrational}) = Float64
-Base.promote_rule(::Type{Bool}, ::Type{<:Neutral}) = Bool
-Base.promote_rule(::Type{Bool}, ::Type{<:Neutral{-1}}) = Int
-Base.promote_rule(::Type{<:Neutral{-1}}, ::Type{Bool}) = Int
+Base.promote_rule(::Type{Bool}, ::Type{<:Neutral}) = Int
+Base.promote_rule(::Type{<:Neutral}, ::Type{Bool}) = Int
+
+"""
+    Neutrals.infinity(x)
+
+Return a suitable value to represent infinity of the same sign as `x` and of type
+suitable for `x`.
+
+"""
+infinity(x::Real) = copysign(Inf, x)
+infinity(x::Rational{T}) where {T} = copysign(one(T), x)//zero(T)
+infinity(x::T) where {T<:AbstractFloat} = copysign(convert(T, Inf)::T, x)
+infinity(x::T) where {T<:Complex} = complex(infinity(real(x)), infinity(imag(x)))
+# FIXME generalize to numbers and deal with units?
 
 #---------------------------------------------------------------------------------- Ranges -
 
 # Considering the specific cases `step = 𝟘` and `start = step = stop = -𝟙` is to avoid
 # stack overflows.
-Base.:(:)(start::Integer, step::Neutral{0}, stop::Integer) = throw(ArgumentError("step cannot be zero"))
-Base.:(:)(start::Integer, step::Neutral{1}, stop::Integer) = start:stop
-Base.:(:)(start::Integer, step::Neutral{-1}, stop::Integer) = (:)(promote(start, step, stop)...)
-Base.:(:)(start::Neutral{-1}, step::Neutral{-1}, stop::Neutral{-1}) = -ONE:-ONE
+function Base.:(:)(start::Integer, step::Neutral, stop::Integer)
+    step isa Neutral{0} && throw(ArgumentError("step cannot be zero"))
+    step isa Neutral{1} && return start:stop
+    return (:)(promote(start, step, stop)...)
+end
 
-Base.:(:)(start::Neutral{1}, stop::Neutral{1}) = Base.OneTo(ONE)
+# FIXME Base.:(:)(start::Neutral{-1}, step::Neutral{-1}, stop::Neutral{-1}) = -ONE:-ONE
+
 Base.:(:)(start::Neutral{1}, stop::Neutral) = Base.OneTo(Int(stop))
 Base.:(:)(start::Neutral{1}, stop::Integer) = Base.OneTo(stop)
 
@@ -290,4 +302,334 @@ function aritmetic_operand(::Type{<:AbstractIrrational}, x::Neutral)
 end
 function aritmetic_operand(::Type{T}, x::Neutral) where {T<:BigReal}
     return isnegative(x) ? Clong(x) : Culong(x)
+end
+# Addition.
+
+Base.:(+)(x::Neutral, y::Neutral) = maybe_neutral(static_value(x) + static_value(y))
+
+for T in (Integer, Rational, Real)
+    @eval begin
+        Base.:(+)(x::Neutral, y::$T) = y + x # addition is symmetric
+
+        function Base.:(+)(x::$T, y::Neutral)
+            isnegative(y) && return x - aritmetic_operand(typeof(x), -y)
+            ispositive(y) && return x + aritmetic_operand(typeof(x),  y)
+            return x
+        end
+    end
+end
+
+# Subtraction.
+
+Base.:(-)(x::Neutral, y::Neutral) = maybe_neutral(static_value(x) - static_value(y))
+
+for T in (Integer, Real, Rational)
+    @eval begin
+        function Base.:(-)(x::$T, y::Neutral)
+            ispositive(y) && return x - aritmetic_operand(typeof(x),  y)
+            isnegative(y) && return x + aritmetic_operand(typeof(x), -y)
+            return x
+        end
+
+        function Base.:(-)(x::Neutral, y::$T)
+            iszero(x) && return -y
+            return aritmetic_operand(typeof(y), x) - y
+        end
+    end
+end
+
+# Multiplication.
+
+Base.:(*)(x::Neutral, y::Neutral) = Neutral{static_value(x)*static_value(y)}()
+
+for T in (Integer, Rational, AbstractIrrational, Real, Complex, Complex{Bool})
+    @eval begin
+        Base.:(*)(x::$T, y::Neutral) = y * x # multiplication is symmetric
+        function Base.:(*)(x::Neutral, y::$T)
+            iszero(x) && return ZERO # propagate strong zero
+            isone(x) && return y
+            return -y
+        end
+    end
+end
+
+# Division.
+
+function Base.:(/)(x::Neutral, y::Neutral)
+    if iszero(y)
+        iszero(x) && return NaN
+        isone(x) && return Inf
+        return -Inf
+    end
+    isone(y) && return x
+    return -x
+end
+
+for T in (Integer, Rational, AbstractIrrational, Real, Complex)
+    @eval begin
+        function Base.:(/)(x::$T, y::Neutral)
+            if iszero(y)
+                x isa Complex && return complex(infinity(real(x)), infinity(imag(x)))
+                return infinity(x)
+            end
+            isone(y) && return x
+            return -x
+        end
+        function Base.:(/)(x::Neutral, y::$T)
+            iszero(x) && return ZERO # propagate strong zero
+            isone(x) && return inv(y)
+            return -inv(y)
+        end
+    end
+end
+
+#---------------------------------------------------------------------- Bitwise operations -
+
+"""
+    Neutrals.bitwise_operand(T, x::Neutral) -> xp
+
+Return a value `xp` equivalent to that of `x` and with efficient type for a bitwise
+operation involving an operand of type `T` and operand `x`.
+
+# See also
+
+[`Neutrals.comparative_operand`](@ref) for comparison operations and
+[`Neutrals.aritmetic_operand`](@ref) for arithmetic operations.
+
+"""
+function bitwise_operand(::Type{T}, x::Neutral) where {T<:Union{Bool,Unsigned}}
+    x isa Neutral{-1} && return ~zero(T)
+    return convert(T, static_value(x))
+end
+function bitwise_operand(::Type{T}, x::Neutral) where {T<:Integer} # also BigInt
+    return aritmetic_operand(T, x)
+end
+
+# Bitwise operations when the two operands are neutral numbers.
+Base.:(|)(x::Neutral, y::Neutral) = Neutral{static_value(x) | static_value(y)}()
+Base.:(&)(x::Neutral, y::Neutral) = Neutral{static_value(x) & static_value(y)}()
+Base.:(⊻)(x::Neutral, y::Neutral) =
+    maybe_neutral(static_value(x) ⊻ static_value(y))
+
+# Bitwise operations are symmetric.
+Base.:(|)(x::Neutral, y::Integer) = (y | x)
+Base.:(&)(x::Neutral, y::Integer) = (y & x)
+Base.:(⊻)(x::Neutral, y::Integer) = (y ⊻ x)
+
+function Base.:(|)(x::Integer, y::Neutral)
+    iszero(y) && return x
+    y isa Neutral{-1} && return ~zero(x) # FIXME propagate -ONE?
+    return x | bitwise_operand(typeof(x), y)
+end
+
+function Base.:(&)(x::Integer, y::Neutral)
+    iszero(y) && return zero(x) # FIXME propagate ZERO?
+    y isa Neutral{-1} && return x
+    return x & bitwise_operand(typeof(x), y)
+end
+
+function Base.:(⊻)(x::Integer, y::Neutral)
+    iszero(y) && return x
+    y isa Neutral{-1} && return ~x
+    return x ⊻ bitwise_operand(typeof(x), y)
+end
+
+#------------------------------------------------------------------------------ Bit shifts -
+
+# In Julia, the type of `x << y`, `x >> y`, and `x >>> y` is determined by `x`, not by `y`:
+# the result is an `Int` if `x` is a Boolean and the result has the same type as `x`
+# otherwise.
+#
+# In Julia implementation, the direction of shift is reversed if `y` is negative, so that
+# the number of bits to shift can be specified as an `UInt`. We do the same here when `y` is
+# a neutral number.
+
+for (op, f) in (:(<<) => :lshft, :(>>) => :rshft, :(>>>) => :urshft)
+    @eval function Base.$op(x::Neutral, y::Neutral)
+        return maybe_neutral($f(static_value(x), y))
+    end
+end
+
+to_int(x::Bool) = x ? 1 : 0
+
+Base.:(<<)(x::Integer, y::Neutral) = lshft(x, y)
+function lshft(x::Bool, y::Neutral)
+    ispositive(y) && return to_int(x) << (static_value(y) % UInt)
+    isnegative(y) && return 0
+    return to_int(x)
+end
+function lshft(x::Integer, y::Neutral)
+    ispositive(y) && return x << (static_value(y) % UInt)
+    isnegative(y) && return x >> ((-static_value(y)) % UInt)
+    return x
+end
+
+Base.:(>>)(x::Integer, y::Neutral) = rshft(x, y)
+function rshft(x::Bool, y::Neutral)
+    ispositive(y) && return 0
+    isnegative(y) && return to_int(x) << ((-static_value(y)) % UInt)
+    return to_int(x)
+end
+function rshft(x::Integer, y::Neutral)
+    ispositive(y) && return x >> (static_value(y) % UInt)
+    isnegative(y) && return x << ((-static_value(y)) % UInt)
+    return x
+end
+
+Base.:(>>>)(x::Integer, y::Neutral) = urshft(x, y)
+function urshft(x::Bool, y::Neutral)
+    ispositive(y) && return 0
+    isnegative(y) && return to_int(x) << ((-static_value(y)) % UInt)
+    return to_int(x)
+end
+function urshft(x::Integer, y::Neutral)
+    ispositive(y) && return x >>> (static_value(y) % UInt)
+    isnegative(y) && return x << ((-static_value(y)) % UInt)
+    return x
+end
+
+for T in (Integer, Unsigned, Int)
+    @eval begin
+        function Base.:(<<)(x::Neutral, y::$T)
+            iszero(x) && return 0 # FIXME propagate ZERO?
+            y isa Bool && return ifelse(y, static_value(x) << 1, static_value(x))
+            return static_value(x) << y
+        end
+        function Base.:(>>)(x::Neutral, y::$T)
+            iszero(x) && return 0 # FIXME propagate ZERO?
+            y isa Bool && return ifelse(y, static_value(x) >> 1, static_value(x))
+            return static_value(x) >> y
+        end
+        function Base.:(>>>)(x::Neutral, y::$T)
+            iszero(x) && return 0 # FIXME propagate ZERO?
+            y isa Bool && return ifelse(y, static_value(x) >>> 1, static_value(x))
+            return static_value(x) >>> y
+        end
+    end
+end
+
+#----------------------------------------------------------------------------- Comparisons -
+
+"""
+    Neutrals.comparative_operand(T, x::Neutral)
+
+Return a value equivalent to that of `x` and with efficient type for an ordered comparison
+operation involving an operand of type `T` and operand `x`. Ordered comparisons include
+`cmp`, `isless`, `<`, `<=`, `>`, or `>=`, but not `==` nor `isequal`.
+
+# See also
+
+[`Neutrals.additive_operand`](@ref) for arithmetic operations and
+[`Neutrals.bitwise_operand`](@ref) for bitwise operations.
+
+"""
+function comparative_operand(::Type{T}, x::Neutral) where {T<:Real}
+    # Expression below throws with `InexactError` if `T` is `Unsigned` or `Bool` which is
+    # exactly what we want as this case shall be handled before calling this function.
+    return convert(T, static_value(x))
+end
+
+function comparative_operand(::Type{T}, x::Neutral) where {T<:Unsigned}
+    v = static_value(x)
+    return v < 0 ? -signed(convert(T, -v)) : convert(T, v)
+end
+
+function comparative_operand(::Type{T}, x::Neutral) where {S,T<:Rational{S}}
+    # Base Julia has specialized code to compare rationals and integers.
+    return comparative_operand(S, x)
+end
+
+function comparative_operand(::Type{T}, x::Neutral) where {T<:AbstractIrrational}
+    return static_value(x)
+end
+
+function comparative_operand(::Type{T}, x::Neutral) where {T<:BigReal}
+    return aritmetic_operand(T, x)
+end
+
+#@noinline comparative_operand(::Type{T}, x::Neutral{-1}) where {T<:NonnegativeNumber} =
+#    throw(InexactError(:convert, T, -1))
+
+# Equality and relations of order between two neutral numbers.
+Base.:(==)(x::Neutral, y::Neutral) = typeof(x) == typeof(y)
+for f in (:(<), :(<=), :cmp)
+    @eval Base.$f(x::Neutral, y::Neutral) = $f(static_value(x), static_value(y))
+end
+
+for T in (Real, Rational, BigInt, BigFloat)
+    @eval begin
+        # Equality between a neutral number and a real.
+        Base.:(==)(x::Neutral, y::$T) = (y == x) # `==` is commutative
+        function Base.:(==)(x::$T, y::Neutral)
+            # We assume that `iszero(x)` and `isone(x)` are not slower than `x == zero(x)` and
+            # `x == one(x)`.
+            y isa Neutral{0} && return iszero(x) # NOTE x must be dimensionless
+            y isa Neutral{1} && return isone(x)
+            isnegative(y) && x isa NonnegativeReal && return false
+            return x == comparative_operand(typeof(x), y)
+        end
+    end
+end
+
+# Neutral numbers are integers and are thus never equal to irrational numbers.
+Base.:(==)(x::AbstractIrrational, y::Neutral) = false
+Base.:(==)(x::Neutral, y::AbstractIrrational) = false
+
+for T in (Real, Rational, BigInt, BigFloat)
+    @eval begin
+        # Less than.
+        function Base.:(<)(x::Neutral, y::$T)
+            if y isa NonnegativeReal
+                isnegative(x) && return true
+                y isa Bool && return ispositive(x) ? false : y
+            end
+            return comparative_operand(typeof(y), x) < y
+        end
+        function Base.:(<)(x::$T, y::Neutral)
+            if x isa NonnegativeReal
+                !ispositive(y) && return false
+                x isa Bool && return !x
+            end
+            return x < comparative_operand(typeof(x), y)
+        end
+        # Less or equal.
+        function Base.:(<=)(x::Neutral, y::$T)
+            if y isa NonnegativeReal
+                !ispositive(x) && return true
+                x isa Neutral{1} && y isa Bool && return y
+            end
+            return comparative_operand(typeof(y), x) <= y
+        end
+        function Base.:(<=)(x::$T, y::Neutral)
+            if x isa NonnegativeReal
+                isnegative(y) && return false
+                x isa Bool && y isa Neutral{0} && return !x
+                x isa Bool && y isa Neutral{1} && return true
+            end
+            return x <= comparative_operand(typeof(x), y)
+        end
+    end
+end
+
+# Except for floats, < and isless are the same.
+# For floats, in `base/float.jl`:
+#
+#     isless(x, y) =  isnan(x) || isnan(b) ? !isnan(x) : x < y
+#
+Base.isless(x::AbstractFloat, y::Neutral) = isnan(x) ? false : x < y
+Base.isless(x::Neutral, y::AbstractFloat) = isnan(y) ? true : x < y
+
+for T in (Real, Integer, BigInt, BigFloat)
+    @eval begin
+        # Generic comparison between a neutral number and a real.
+        Base.cmp(x::Neutral, y::$T) = -Base.cmp(y, x) # `cmp` is anti-commutative
+        function Base.cmp(x::$T, y::Neutral)
+            if x isa NonnegativeReal
+                isnegative(y) && return 1
+                y isa Neutral{0} && return iszero(x) ? 0 : 1
+                x isa Bool && y isa Neutral{1} && return x ? 0 : -1
+            end
+            return ifelse(isless(x, y), -1, ifelse(isless(y, x), 1, 0))
+        end
+    end
 end
