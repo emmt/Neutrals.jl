@@ -121,17 +121,16 @@ for T in (BigInt, BigFloat)
     end
 end
 
-#---------------------------------------------------------------------------- Constructors -
-
-# For numbers, there is no needs to extend `Base.convert` with the following "conversion"
-# constructors as `Base.convert(T, x)` falls back to call `T(x)::T`.
-Neutral{V}(x::Neutral) where {V} = throw(InexactError(:convert, Neutral{V}, x))
-Neutral(x::Int) = Neutral{x}()
-for type in (:Number, :Rational, :Complex, :BigFloat) # `Number` is not enough to get rid of ambiguities
+# Outer constructors.
+(::Type{Neutral})(x::Neutral) = x
+(::Type{Neutral})(x::Int) = Neutral{x}()
+for T in (:Number, :Rational, :Complex, :BigFloat)
     @eval begin
-        Neutral(x::$type) = Neutral(Int(x)::Int)
-        Neutral{V}(x::$type) where {V} =
-            x == V ? Neutral{V}() : throw(InexactError(:convert, Neutral{V}, x))
+        (::Type{Neutral})(x::$T) = Neutral(convert(Int, x))
+        function (::Type{Neutral{V}})(x::$T) where {V}
+            isequal(x, V) || throw(InexactError(:convert, Neutral{V}, x))
+            return Neutral{V}()
+        end
     end
 end
 
