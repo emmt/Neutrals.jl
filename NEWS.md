@@ -4,6 +4,13 @@ This page describes the most important changes in `Neutrals`. The format is base
 a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic
 Versioning](https://semver.org).
 
+## Unreleased
+
+### Changed
+
+- Non-exported public function `Neutrals.value` renamed `Neutrals.static_value`.
+
+
 ## Version 0.4.1 (2026-07-27)
 
 ### Added

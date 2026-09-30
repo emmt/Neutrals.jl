@@ -45,15 +45,15 @@ for (T, name, descr) in ((Neutral{0}, "𝟘",
 end
 
 """
-    Neutrals.value(x)
-    Neutrals.value(typeof(x))
+    Neutrals.static_value(x::Neutral)
+    Neutrals.static_value(typeof(x)::Type{<:Neutral})
 
-Return the value associated with the neutral number `x`. This *trait* only depends on the
-type of `x`.
+Return the static value of the neutral number `x`. The result is an integer (of type `Int`)
+whose value only depends on the of `x`.
 
 """
-value(::Neutral{x}) where x = x
-value(::Type{<:Neutral{x}}) where x = x
+static_value(::Neutral{x}) where x = x
+static_value(::Type{<:Neutral{x}}) where x = x
 
 # Conversion rules for bare numeric types. No needs to extend `Base.convert` because
 # `Base.convert(T,x)` amounts to calling `T(x)` for any numeric type `T`.
@@ -61,7 +61,7 @@ for T in (Bool,
           Int8, Int16, Int32, Int64, Int128, BigInt,
           UInt8, UInt16, UInt32, UInt64, UInt128,
           Float16, Float32, Float64, BigFloat)
-    @eval (::Type{$T})(x::Neutral) = $T(value(x))
+    @eval (::Type{$T})(x::Neutral) = $T(static_value(x))
     if !is_signed(T)
         @eval (::Type{$T})(x::Neutral{-1}) = throw(InexactError(:convert, $T, x))
     end
@@ -70,10 +70,10 @@ end
 (::Type{Real})(x::Neutral) = x
 (::Type{Integer})(x::Neutral) = x
 (::Type{Rational{T}})(x::Neutral) where {T<:Integer} = Rational(T(x))
-(::Type{Rational})(x::Neutral) = Rational(value(x), 1)
+(::Type{Rational})(x::Neutral) = Rational(static_value(x), 1)
 (::Type{Complex{T}})(x::Neutral) where {T<:Real} = Complex(T(x), T(0))
-(::Type{Complex})(x::Neutral) = Complex(value(x), 0)
-(::Type{AbstractFloat})(x::Neutral) = float(value(x))
+(::Type{Complex})(x::Neutral) = Complex(static_value(x), 0)
+(::Type{AbstractFloat})(x::Neutral) = float(static_value(x))
 (::Type{T})(x::Neutral) where {T<:AbstractIrrational} = throw(InexactError(:convert, T, x))
 
 # Extend precision methods defined in `TypeUtils`.
@@ -104,7 +104,7 @@ Base.isone(x::Neutral{1}) = true
 #
 Base.isfinite(x::Neutral) = true
 #
-Base.sign(x::Union{Neutral{0},Neutral{1},Neutral{-1}}) = value(x)
+Base.sign(x::Union{Neutral{0},Neutral{1},Neutral{-1}}) = static_value(x)
 #
 Base.signbit(x::NonNegativeNeutral) = false
 Base.signbit(x::Neutral) = true

@@ -105,7 +105,7 @@ for x in instances(Neutral), y in instances(Neutral)
                    :(<<)  => :impl_lshft,
                    :(>>)  => :impl_rshft,
                    :(>>>) => :impl_urshft)
-        r = @eval $f(value($x), value($y))
+        r = @eval $f(static_value($x), static_value($y))
         @eval $g(::$(typeof(x)), ::$(typeof(y))) =
             $(r isa Int && r ∈ (0, 1, -1) ? Neutral{r}() : r)
     end
@@ -119,9 +119,9 @@ for x in instances(Neutral), y in instances(Neutral)
             @eval $g(::$(typeof(x)), ::$(typeof(y))) = throw(DivideError())
         else # y is ONE or -ONE
             r = if f === :(/)
-                value(x)*value(y) # x/y yields the same result as x*y when abs(y) = 1
+                static_value(x)*static_value(y) # x/y yields the same result as x*y when abs(y) = 1
             else
-                @eval $f(value($x), value($y))
+                @eval $f(static_value($x), static_value($y))
             end
             @eval $g(::$(typeof(x)), ::$(typeof(y))) = $(Neutral{r}())
         end
@@ -131,7 +131,7 @@ for x in instances(Neutral), y in instances(Neutral)
     @eval impl_pow(::$(typeof(x)), ::$(typeof(y))) = $(y === ZERO ? ONE : x)
 
     # Comparison.
-    @eval impl_cmp(::$(typeof(x)), ::$(typeof(y))) = $(cmp(value(x), value(y)))
+    @eval impl_cmp(::$(typeof(x)), ::$(typeof(y))) = $(cmp(static_value(x), static_value(y)))
 end
 
 """
@@ -429,9 +429,9 @@ See [`Neutrals.impl_add`](@ref) for the interpretation of `w`.
 # NOTE For floats in `base/float.jl`:
 #      isless(x, y) =  isnan(x) || isnan(b) ? !isnan(x) : x < y
 @inline impl_isless(x::AbstractFloat, y::Neutral) =
-    isnan(x) ? false : x < oftype(x, value(y))
+    isnan(x) ? false : x < oftype(x, static_value(y))
 @inline impl_isless(x::Neutral, y::AbstractFloat) =
-    isnan(y) ? true : oftype(y, value(x)) < y
+    isnan(y) ? true : oftype(y, static_value(x)) < y
 
 # For bitwise operations (`|`, `&`, and `xor`) between integers (including Booleans and big
 # integers) of mixed types, the called methods are defined in `base/int.jl` and promote
