@@ -9,7 +9,7 @@ TypeUtils = "c3b1956e-8857-4d84-9b79-890df85b1e67"
 [compat]
 Aqua = "0.8"
 Test = "<0.0.1, 1"
-TypeUtils = "2"
+TypeUtils = "2.2"
 Unitful = "1"
 julia = "1"
 
