@@ -392,6 +392,102 @@ using Aqua
         @test @inferred(promote_rule(Neutral{-1}, T)) === Tp
     end
 
+    @testset "Ranges" begin
+        @test @inferred(ZERO:ZERO) === 0: 0
+        @test @inferred(ZERO: ONE) === 0: 1
+        @test @inferred(ZERO:-ONE) === 0:-1
+        @test @inferred( ONE:ZERO) === Base.OneTo( 0)
+        @test @inferred( ONE: ONE) === Base.OneTo( 1)
+        @test @inferred( ONE:-ONE) === Base.OneTo(-1)
+        @test @inferred(-ONE:ZERO) === -1: 0
+        @test @inferred(-ONE: ONE) === -1: 1
+        @test @inferred(-ONE:-ONE) === -1:-1
+
+        @test @inferred(ZERO:2) ===  0:2
+        @test @inferred( ONE:2) === Base.OneTo(2)
+        @test @inferred(-ONE:2) === -1:2
+        @test @inferred(ZERO:0x02) ===  0x00:0x02
+        @test @inferred( ONE:0x02) === Base.OneTo(0x02)
+        @test_throws InexactError -ONE:0x02
+        @test @inferred(ZERO:3.0f0) ===  0.0f0:3.0f0
+        @test @inferred( ONE:3.0f0) ===  1.0f0:3.0f0
+        @test @inferred(-ONE:3.0f0) === -1.0f0:3.0f0
+
+        # `start:𝟘:stop` throws
+        @test_throws ArgumentError ZERO:ZERO:ZERO
+        @test_throws ArgumentError ZERO:ZERO: ONE
+        @test_throws ArgumentError ZERO:ZERO:-ONE
+        @test_throws ArgumentError  ONE:ZERO:ZERO
+        @test_throws ArgumentError  ONE:ZERO: ONE
+        @test_throws ArgumentError  ONE:ZERO:-ONE
+        @test_throws ArgumentError -ONE:ZERO:ZERO
+        @test_throws ArgumentError -ONE:ZERO: ONE
+        @test_throws ArgumentError -ONE:ZERO:-ONE
+        @test_throws ArgumentError true:ZERO:true
+        @test_throws ArgumentError 1:ZERO:1
+        @test_throws ArgumentError 1.0:ZERO:1.0
+        @test_throws ArgumentError 0:ZERO:1.0
+
+        # `start:𝟙:stop` yields `start:stop`
+        @test @inferred(ZERO: ONE:ZERO) === ZERO:ZERO
+        @test @inferred(ZERO: ONE: ONE) === ZERO: ONE
+        @test @inferred(ZERO: ONE:-ONE) === ZERO:-ONE
+        @test @inferred( ONE: ONE:ZERO) ===  ONE:ZERO
+        @test @inferred( ONE: ONE: ONE) ===  ONE: ONE
+        @test @inferred( ONE: ONE:-ONE) ===  ONE:-ONE
+        @test @inferred(-ONE: ONE:ZERO) === -ONE:ZERO
+        @test @inferred(-ONE: ONE: ONE) === -ONE: ONE
+        @test @inferred(-ONE: ONE:-ONE) === -ONE:-ONE
+
+        @test @inferred(ZERO:ONE:2) ===  0:2
+        @test @inferred( ONE:ONE:2) === Base.OneTo(2)
+        @test @inferred(-ONE:ONE:2) === -1:2
+        @test @inferred(ZERO:ONE:0x02) ===  0x00:0x02
+        @test @inferred( ONE:ONE:0x02) === Base.OneTo(0x02)
+        @test_throws InexactError -ONE:ONE:0x02
+        @test @inferred(ZERO:ONE:3.0f0) ===  0.0f0:3.0f0
+        @test @inferred( ONE:ONE:3.0f0) ===  1.0f0:3.0f0
+        @test @inferred(-ONE:ONE:3.0f0) === -1.0f0:3.0f0
+
+        # `start:-𝟙:stop` yields `start:-1:stop`
+        @test @inferred(ZERO:-ONE:ZERO) ===  0:-1: 0
+        @test @inferred(ZERO:-ONE: ONE) ===  0:-1: 1
+        @test @inferred(ZERO:-ONE:-ONE) ===  0:-1:-1
+        @test @inferred( ONE:-ONE:ZERO) ===  1:-1: 0
+        @test @inferred( ONE:-ONE: ONE) ===  1:-1: 1
+        @test @inferred( ONE:-ONE:-ONE) ===  1:-1:-1
+        @test @inferred(-ONE:-ONE:ZERO) === -1:-1: 0
+        @test @inferred(-ONE:-ONE: ONE) === -1:-1: 1
+        @test @inferred(-ONE:-ONE:-ONE) === -1:-1:-1
+
+        @test @inferred(ZERO:-ONE:-2) ===  0:-1:-2
+        @test @inferred( ONE:-ONE:-2) ===  1:-1:-2
+        @test @inferred(-ONE:-ONE:-2) === -1:-1:-2
+        @test @inferred(ZERO:-ONE:0x02) === 0x00:-Int8(1):0x02
+        @test @inferred( ONE:-ONE:0x02) === 0x01:-Int8(1):0x02
+        @test_throws InexactError -ONE:-ONE:0x02
+        @test @inferred(ZERO:-ONE:3.0f0) ===  0.0f0:-1.0f0:3.0f0
+        @test @inferred( ONE:-ONE:3.0f0) ===  1.0f0:-1.0f0:3.0f0
+        @test @inferred(-ONE:-ONE:3.0f0) === -1.0f0:-1.0f0:3.0f0
+
+        # Special cases.
+        let r = @inferred(Base.OneTo(ZERO))
+            @test r isa Base.OneTo{typeof(ZERO)}
+            @test @inferred(isempty(r)) === true
+            @test @inferred(length(r)) === 0
+            @test @inferred(first(r)) === ONE
+            @test @inferred(last(r)) === ZERO
+        end
+        let r = @inferred(Base.OneTo(ONE))
+            @test r isa Base.OneTo{typeof(ONE)}
+            @test @inferred(isempty(r)) === false
+            @test @inferred(length(r)) === 1
+            @test @inferred(first(r)) === ONE
+            @test @inferred(last(r)) === ONE
+        end
+        @test_throws InexactError Base.OneTo(-ONE)
+    end
+
     @testset "Arithmetic on neutral numbers" begin
         @test @inferred( ZERO  +  ZERO ) === ZERO
         @test @inferred( ZERO  +   ONE ) ===  ONE

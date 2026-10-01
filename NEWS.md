@@ -32,6 +32,14 @@ breaking changes (see below) but in most cases the end-user shall see no differe
 - Non-exported public functions `Neutrals.type_complex` and `Neutrals.type_signed` have been
   suppressed.
 
+- The special rules that `start:𝟙:stop` is identical to `start:stop` and that `𝟙:stop`, with
+  `stop` and integer, is identical to `Base.OneTo(stop)` are preserved but building a range
+  `start:[step:]stop` with a mixture of reals and neutral numbers now use less esoteric
+  rules. In `start:step:stop`, the endpoints `start` and `stop` are first promoted to the
+  same type using standard promotion rules and neutral numbers are eventually converted to
+  ordinary integers to prevent building ranges of neutral numbers. It is however still
+  possible to build a range of neutral numbers by calling the constructors, not with the
+  colon `:` operator.
 
 ### Changed
 

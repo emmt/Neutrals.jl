@@ -194,28 +194,47 @@ infinity(x::T) where {T<:Complex} = complex(infinity(real(x)), infinity(imag(x))
 
 #---------------------------------------------------------------------------------- Ranges -
 
+# Bypass `start:stop` methods defined in `base/range.jl` when `start` is a neutral number.
+Base.:(:)(start::Neutral, stop::Real) = to_range(start, stop)
+
+# Bypass `start:step:stop` methods defined in `base/range.jl` when `step` is a neutral
+# number.
+Base.:(:)(start::Real, step::Neutral, stop::Real) = to_range(start, step, stop)
+Base.:(:)(start::T, step::Neutral, stop::T) where {T<:Real} = to_range(start, step, stop)
+Base.:(:)(start::T, step::Neutral, stop::T) where {T<:AbstractFloat} = to_range(start, step, stop)
+
 # Considering the specific cases `step = 𝟘` and `start = step = stop = -𝟙` is to avoid
 # stack overflows.
-function Base.:(:)(start::Integer, step::Neutral, stop::Integer)
-    step isa Neutral{0} && throw(ArgumentError("step cannot be zero"))
-    step isa Neutral{1} && return start:stop
-    return (:)(promote(start, step, stop)...)
+
+@noinline to_range(start::Real, step::Neutral{0}, stop::Real) =
+    throw(ArgumentError("step cannot be zero"))
+
+# `start:𝟙:stop` is identical to `start:stop`
+to_range(start::Real, step::Neutral{1}, stop::Real) = to_range(start, stop)
+
+function to_range(start::Real, step::Neutral, stop::Real)
+    # Step is neither `𝟘` not `𝟙`. First, promote `start` and `stop` as done in
+    # `base/range.jl`; then decide how to promote the step.
+    T = promote_type(typeof(start), typeof(stop))
+    T <: Neutral && return (:)(Int(start), Int(step), Int(stop))
+    return (:)(convert(T, start), comparative_operand(T, step), convert(T, stop))
 end
 
-# FIXME Base.:(:)(start::Neutral{-1}, step::Neutral{-1}, stop::Neutral{-1}) = -ONE:-ONE
+# In `start:stop`, use standard promotion rules except that neutral numbers are eventually
+# converted to `Int` to prevent building ranges of neutral numbers.
+to_range(start::Real, stop::Real) = (:)(promote(start, stop)...)
+to_range(start::Neutral, stop::Neutral) = UnitRange{Int}(static_value(start), static_value(stop))
 
-Base.:(:)(start::Neutral{1}, stop::Neutral) = Base.OneTo(Int(stop))
-Base.:(:)(start::Neutral{1}, stop::Integer) = Base.OneTo(stop)
+# `𝟙:stop` with `stop` integer is identical to `Base.OneTo(stop)` but if `stop` is a neutral
+# number it is converted to an `Int` (because of above rule).
+to_range(start::Neutral{1}, stop::Integer) = Base.OneTo(stop)
+to_range(start::Neutral{1}, stop::Neutral) = Base.OneTo{Int}(static_value(stop))
 
+# In case, you manage to build a range of neutral numbers, they can only be of the same
+# type. Hence of unit length. Then, the following is needed to have `length` returns `1`,
+# not `𝟙`.
 Base.length(r::UnitRange{T}) where {T<:Neutral} = 1
-Base.first(r::UnitRange{T}) where {T<:Neutral} = T()
-Base.last(r::UnitRange{T}) where {T<:Neutral} = T()
-
-# This fix is needed for Julia versions < 1.8.0-beta1 in order to be able to build a
-# UnitRange with start and stop being the same neutral number. Such as `𝟙:𝟙`.
-if VERSION < v"1.8.0-beta1" && isdefined(Base, :unitrange_last)
-    Base.unitrange_last(start::T, stop::T) where {T<:Neutral} = stop
-end
+Base.length(r::Base.OneTo{T}) where {T<:Neutral} = static_value(T) > 0 ? 1 : 0
 
 #------------------------------------------------------------------- Arithmetic operations -
 
@@ -463,6 +482,10 @@ end
 Return a value equivalent to that of `x` and with efficient type for an ordered comparison
 operation involving an operand of type `T` and operand `x`. Ordered comparisons include
 `cmp`, `isless`, `<`, `<=`, `>`, or `>=`, but not `==` nor `isequal`.
+
+If `x` is negative and `T` cannot represent negative numbers, a signed result is returned
+(unlike `aritmetic_operand`). For this reason, `comparative_operand` is also used to convert
+the `step` in a range.
 
 # See also
 
