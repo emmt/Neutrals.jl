@@ -47,6 +47,9 @@ breaking changes (see below) but in most cases the end-user shall see no differe
 
 ### Added
 
+- Construction of a rational number involving a neutral number (numerator and/or
+  denominator) follows similar simplification rules as the division.
+
 - Bit-shift operations are supported for a leftmost operand which is neutral number. In this
   case, the result is an `Int`. Previously only the right-most operand (the number of bits
   to shift) could be a neutral number.

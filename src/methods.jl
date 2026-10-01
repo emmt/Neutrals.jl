@@ -186,10 +186,23 @@ Return a value representing infinity of the same sign as `x` and of type suitabl
 
 """
 infinity(x::Real) = copysign(Inf, x)
-infinity(x::Rational{T}) where {T} = copysign(one(T), x)//zero(T)
+infinity(x::Rational) = infinity_numerator(x) // infinity_denominator(x)
+# NOTE not: infinity(x::Integer) = copysign(one(x), x)//zero(x) because 0//0 is not allowed
 infinity(x::T) where {T<:AbstractFloat} = copysign(convert(T, Inf)::T, x)
 infinity(x::T) where {T<:Complex} = complex(infinity(real(x)), infinity(imag(x)))
 # FIXME generalize to numbers and deal with units?
+
+# Return the numerator and the denominator of infinity expressed as a rational or computed
+# by division. `Rational{Bool}` are not properly implemented for our needs, so a Boolean is
+# considered as an `Int` in this context.
+infinity_numerator(x::Bool) = 1
+infinity_numerator(x::Unsigned) = one(x)
+infinity_numerator(x::Real) = ifelse(isnegative(x), -one(x), one(x))
+#infinity_numerator(x::Real) = flipsign(one(x), x)
+#infinity_numerator(x::Real) = copysign(one(x), x)
+
+infinity_denominator(x::Bool) = 0
+infinity_denominator(x::Real) = zero(x)
 
 """
     Neutrals.negate(x) -> -x
@@ -384,6 +397,28 @@ for T in (Integer, Rational, AbstractIrrational, Real, Complex)
             return -inv(y)
         end
     end
+end
+
+# Extend `Rational(x,y)` to behave nearly as `x/y` when at least one of `x` or `y` is a
+# neutral number.
+
+function (::Type{Rational})(x::Neutral, y::Neutral)
+    y isa Neutral{0} && x isa Neutral{0} && return NaN # 0//0 is not allowed
+    y isa Neutral{1} && return x
+    y isa Neutral{-1} && return negate(x)
+    return static_value(x) // static_value(y)
+end
+
+function (::Type{Rational})(x::Integer, y::Neutral)
+    iszero(y) && return infinity_numerator(x) // infinity_denominator(x) # ±Inf as a rational number
+    isone(y) && return x
+    return negate(x)
+end
+
+function (::Type{Rational})(x::Neutral, y::Integer)
+    iszero(x) && return ZERO # propagate strong zero
+    isone(x) && return one(y) // y
+    return y isa Bool ? -1 // Int(y) : negate(one(y)) // y
 end
 
 #---------------------------------------------------------------------- Bitwise operations -

@@ -566,6 +566,17 @@ using Aqua
         @test @inferred((-ONE) \  ZERO ) ===  ZERO  / (-ONE)
         @test @inferred((-ONE) \   ONE ) ===   ONE  / (-ONE)
         @test @inferred((-ONE) \ (-ONE)) === (-ONE) / (-ONE)
+
+        @test @inferred( ZERO  //  ZERO ) === NaN
+        @test @inferred( ZERO  //   ONE ) === ZERO
+        @test @inferred( ZERO  // (-ONE)) === ZERO
+        @test @inferred(  ONE  //  ZERO ) === 1//0
+        @test @inferred(  ONE  //   ONE ) === ONE
+        @test @inferred(  ONE  // (-ONE)) === -ONE
+        @test @inferred((-ONE) //  ZERO ) === -1//0
+        @test @inferred((-ONE) //   ONE ) === -ONE
+        @test @inferred((-ONE) // (-ONE)) === ONE
+
     end
 
     @testset "Bitwise operations on neutral numbers" begin
@@ -751,6 +762,31 @@ using Aqua
         else
             @test_throws OverflowError x/(-ONE)
             @test_throws OverflowError (-ONE)\x
+        end
+    end
+
+    @testset "Rational with x::$(typeof(x)) = $x" for x in filter(x -> x isa Integer, values)
+        if x === ZERO
+            @test same_value_and_type(@inferred(ZERO // x), NaN)
+        else
+            @test same_value_and_type(@inferred(ZERO // x), ZERO)
+            inf_num = (x isa Bool ? 1 : x < 0 ? -one(x) : one(x))
+            inf_den = (x isa Bool ? 0 : zero(x))
+            @test same_value_and_type(@inferred(x // ZERO), inf_num // inf_den)
+        end
+
+        @test same_value_and_type(@inferred(x // ONE), x)
+        @test same_value_and_type(@inferred(ONE // x), one(x) // x)
+
+        if can_be_truly_negated(x)
+            @test same_value_and_type(@inferred(x // (-ONE)), -x)
+        else
+            @test_throws OverflowError x // (-ONE)
+        end
+        if can_be_truly_negated(one(x))
+            @test same_value_and_type(@inferred((-ONE) // x), (-one(x)) // x)
+        else
+            @test_throws OverflowError (-ONE) // x
         end
     end
 
