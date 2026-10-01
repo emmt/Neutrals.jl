@@ -41,6 +41,18 @@ for (f, n) in (:zero => ZERO, :one => ONE, :oneunit => ONE)
     end
 end
 
+# Define functions that are not defined in all Julia versions.
+if !isdefined(Base, :ispositive)
+    ispositive(x::Real) = x > 0
+    ispositive(x::Unsigned) = !iszero(x)
+    ispositive(x::Bool) = x
+end
+if !isdefined(Base, :isnegative)
+    isnegative(x::Real) = x < 0
+    isnegative(x::Unsigned) = false
+    isnegative(x::Bool) = false
+end
+
 for (f, ex) in (:iszero     => :(static_value(x) == 0),
                 :isone      => :(static_value(x) == 1),
                 :ispositive => :(static_value(x) > 0),
