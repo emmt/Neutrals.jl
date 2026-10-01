@@ -9,8 +9,8 @@ whose value only depends on the of `x`.
 static_value(x::Neutral) = static_value(typeof(x))
 static_value(::Type{Neutral{X}}) where {X} = X
 
-# NOTE This method is not type stable and should only be used in a context where its result
-#      can be inferred.
+# NOTE This following method is not type stable and should only be used in a context where
+#      its result can be inferred at compile time.
 @inline maybe_neutral(z::Int) = -1 <= z <= 1 ? Neutral{z}() : z
 
 function Base.show(io::IO, x::Neutral)
@@ -182,8 +182,7 @@ Base.promote_rule(::Type{<:Neutral}, ::Type{Bool}) = Int
 """
     Neutrals.infinity(x)
 
-Return a suitable value to represent infinity of the same sign as `x` and of type
-suitable for `x`.
+Return a value representing infinity of the same sign as `x` and of type suitable for `x`.
 
 """
 infinity(x::Real) = copysign(Inf, x)
@@ -603,3 +602,17 @@ for T in (Real, Integer, BigInt, BigFloat)
         end
     end
 end
+
+#------------------------------------------------------------------------- Complex numbers -
+# Specific rules for complex numbers.
+
+# Extend `Complex(x,y)` to behave as `x + y*im` when at least one of `x` or `y` is a
+# neutral number. (The 3rd rule is needed to remove any ambiguities.)
+Base.Complex(x::Neutral{0}, y::Real      ) = y*im # 𝟘 + y*im -> y*im
+Base.Complex(x::Real,       y::Neutral{0}) = x    # x + 𝟘*im -> x
+Base.Complex(x::Neutral{0}, y::Neutral{0}) = ZERO # 𝟘 + 𝟘*im -> 𝟘
+
+# For the left division between a complex number and a neutral number, we want to avoid
+# calling the adjoint method which would convert a Complex{Bool} into a Complex{Int}).
+Base.:(\)(x::Neutral, y::Complex) = y/x
+Base.:(\)(x::Complex, y::Neutral) = y/x
