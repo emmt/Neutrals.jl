@@ -689,6 +689,51 @@ for T in (Integer, BigInt, AbstractIrrational, BigFloat, Real)
     end
 end
 
+#---------------------------------------------------------------------------- Broadcasting -
+
+# For broadcasted operations like `x .+ 𝟙` the existing rules yield a result which is stored
+# into a new array and which is as fast to compute as would a specialized method. We
+# specialize the few broadcasted operations, like `x .+ 𝟘` that could yield `x` unchanged or
+# a result like `x .* 𝟘` to yield an array of `𝟘`s without computations.
+
+# Base method to extend for broadcasted operations.
+import Base.Broadcast: broadcasted
+
+broadcasted(::typeof(-), x::AbstractArray{<:Union{Real,Complex}}, y::Neutral{0}) = x
+
+broadcasted(::typeof(+), x::Neutral, y::AbstractArray{<:Union{Real,Complex}}) = broadcasted(+, y, x)
+broadcasted(::typeof(+), x::AbstractArray{<:Union{Real,Complex}}, y::Neutral{0}) = x
+
+broadcasted(::typeof(*), x::AbstractArray{<:Number}, y::Neutral) = broadcasted(*, y, x)
+broadcasted(::typeof(*), x::Neutral{1}, y::AbstractArray{<:Number}) = y
+broadcasted(::typeof(*), x::Neutral{-1}, y::AbstractArray{<:Number}) = broadcasted(-, y)
+
+broadcasted(::typeof(^), x::AbstractArray{<:Number}, ::Neutral{1}) = x
+
+broadcasted(::typeof(/), x::AbstractArray{<:Number}, y::Neutral{1}) = x
+
+broadcasted(::typeof(//), x::AbstractArray{<:Integer}, y::Neutral{1}) = x
+
+# Broadcasting rules for bitwise operations.
+for (op, N, A, ex) in ((:(|), Neutral{ 0}, AbstractArray{<:Integer}, :(x)),
+                       (:(&), Neutral{-1}, AbstractArray{<:Integer}, :(x)),
+                       (:(⊻), Neutral{ 0}, AbstractArray{<:Integer}, :(x)))
+    @eval begin
+        broadcasted(::typeof($op), x::$A, y::Neutral) = broadcasted($op, y, x)
+        broadcasted(::typeof($op), x::$A, y::$N) = $ex
+    end
+end
+
+# Broadcasting rules for bit-shift.
+for op in (:(<<), :(>>), :(>>>))
+    @eval begin
+        broadcasted(::typeof($op), x::AbstractArray{<:Integer}, y::Neutral{0}) = x
+        broadcasted(::typeof($op), x::AbstractArray{Bool}, y::Neutral{0}) = broadcasted(Int, x)
+    end
+end
+
+broadcasted(::typeof(div), x::AbstractArray{<:Integer}, ::Neutral{1}) = x
+
 #------------------------------------------------------------------------- Complex numbers -
 # Specific rules for complex numbers.
 

@@ -924,6 +924,34 @@ using Aqua
         @test all([cmp(x, (-ONE)) === cmp( x, -1) for x in r])
     end
 
+    types = (Bool, Int16, Float32)
+    @testset "Broadcasted operations with x::$(typeof(x))" for T in types, x in (zero(T), oneunit(T), rand(T, 3, 4),)
+        if x isa AbstractArray
+            z = similar(x, typeof(ZERO))
+            u = fill!(similar(x), oneunit(eltype(x)))
+            r = inv.(x)
+        else
+            z = ZERO
+            u = oneunit(x)
+            r = inv(x)
+        end
+
+        @test @inferred(x .+ ZERO) === x
+        @test @inferred(x .- ZERO) === x
+        @test @inferred(x .*  ONE) === x
+        @test @inferred(x  *  ONE) === x
+        @test @inferred(x ./  ONE) === x
+        @test @inferred(x  /  ONE) === x
+        @test @inferred(ZERO .+ x) === x
+        @test @inferred(ONE  .* x) === x
+        @test @inferred(ONE   * x) === x
+        @test same_value_and_type(@inferred(ZERO .- x), -x)
+        @test same_value_and_type(@inferred(ZERO .* x),  z)
+        @test same_value_and_type(@inferred(ZERO  * x),  z)
+        @test same_value_and_type(@inferred(x .* ZERO),  z)
+        @test same_value_and_type(@inferred(x  * ZERO),  z)
+    end
+
     @testset "Usage examples" begin
         x = [Inf, NaN, -Inf, -NaN]
         @test all(iszero, ZERO .* x)
