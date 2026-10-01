@@ -55,10 +55,18 @@ using Aqua
     sub(x::Union{Real,Complex}, y::Neutral) =
         iszero(y) ? x : x - add_op(typeof(x), y)
 
-    @testset "Constants" begin
+    @testset "Types and constants" begin
         @test typeof(ZERO) === Neutral{ 0}
         @test typeof( ONE) === Neutral{ 1}
         @test typeof(-ONE) === Neutral{-1}
+
+        let list = @inferred(instances(Neutral))
+            @test list isa NTuple{3, Neutral}
+            @test length(list) === 3
+            @test ZERO ∈ list
+            @test  ONE ∈ list
+            @test -ONE ∈ list
+        end
     end
 
     @testset "Non-exported public API" begin
