@@ -528,6 +528,16 @@ using Aqua
         @test @inferred((-ONE) /  ZERO ) === -Inf
         @test @inferred((-ONE) /   ONE ) === -ONE
         @test @inferred((-ONE) / (-ONE)) === ONE
+
+        @test @inferred( ZERO  \  ZERO ) ===  ZERO  /  ZERO
+        @test @inferred( ZERO  \   ONE ) ===   ONE  /  ZERO
+        @test @inferred( ZERO  \ (-ONE)) === (-ONE) /  ZERO
+        @test @inferred(  ONE  \  ZERO ) ===  ZERO  /   ONE
+        @test @inferred(  ONE  \   ONE ) ===   ONE  /   ONE
+        @test @inferred(  ONE  \ (-ONE)) === (-ONE) /   ONE
+        @test @inferred((-ONE) \  ZERO ) ===  ZERO  / (-ONE)
+        @test @inferred((-ONE) \   ONE ) ===   ONE  / (-ONE)
+        @test @inferred((-ONE) \ (-ONE)) === (-ONE) / (-ONE)
     end
 
     @testset "Bitwise operations on neutral numbers" begin
@@ -703,6 +713,13 @@ using Aqua
         @test same_value_and_type(@inferred(x/ONE),    x)
         @test same_value_and_type(@inferred((-ONE)/x), -inv(x))
         @test same_value_and_type(@inferred(x/(-ONE)), -x)
+
+        @test same_value_and_type(@inferred(ZERO\x),   x/ZERO)
+        @test same_value_and_type(@inferred(x\ZERO),   ZERO/x)
+        @test same_value_and_type(@inferred(ONE\x),    x/ONE)
+        @test same_value_and_type(@inferred(x\ONE),    ONE/x)
+        @test same_value_and_type(@inferred((-ONE)\x), x/(-ONE))
+        @test same_value_and_type(@inferred(x\(-ONE)), (-ONE)/x)
     end
 
     @testset "Addition with x::$(typeof(x)) = $x" for x in values
