@@ -16,8 +16,10 @@ using TypeUtils: @public
 @public(
     @dispatch_on_value,
     Dispatch,
+    can_be_truly_negated,
     dispatch,
     infinity,
+    negate,
     recode!,
     recode,
     static_value,

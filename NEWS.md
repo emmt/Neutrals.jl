@@ -51,6 +51,18 @@ breaking changes (see below) but in most cases the end-user shall see no differe
   case, the result is an `Int`. Previously only the right-most operand (the number of bits
   to shift) could be a neutral number.
 
+- New non-exported public functions to deal with correctly taking the opposite of a number.
+  `Neutrals.negate(x)` returns `-x` throwing an error if the value of `x` cannot be truly
+  negated while `Neutrals.can_be_truly_negated(x)` returns whether `x` can be truly negated
+  by `-x`. Only non-zero unsigned numbers (unsigned integers and rationals or complexes with
+  unsigned components) cannot be truly negated.
+
+### Fixed
+
+- The division `x/-𝟙` yields `-x` (as before) but an error is thrown if `x` cannot be truly
+  negated. Hence, it can be correctly assumed that `x/-𝟙 == x/-1` always holds. Only
+  non-zero unsigned numbers (unsigned integers and rationals or complexes with unsigned
+  components) cannot be truly negated.
 
 ## Version 0.4.1 (2026-07-27)
 

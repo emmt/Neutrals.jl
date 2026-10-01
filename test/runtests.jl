@@ -1,5 +1,6 @@
 using Neutrals
-using Neutrals: infinity, ispositive, isnegative, static_value
+using Neutrals: infinity, ispositive, isnegative, static_value,
+    negate, can_be_truly_negated
 using Test
 using TypeUtils
 using Aqua
@@ -72,6 +73,33 @@ using Aqua
         @test @inferred(infinity(2//1)) === 1//0
         @test @inferred(infinity(-3//1)) === -1//0
         @test @inferred(infinity(1 - im)) === complex(Inf, -Inf)
+
+        @test @inferred(can_be_truly_negated(true)) === true
+        @test @inferred(can_be_truly_negated(false)) === true
+        @test @inferred(can_be_truly_negated(1)) === true
+        @test @inferred(can_be_truly_negated(1.0)) === true
+        @test @inferred(can_be_truly_negated(-2 + im)) === true
+        @test @inferred(can_be_truly_negated(π)) === true
+        @test @inferred(can_be_truly_negated(0x00)) === true
+        @test @inferred(can_be_truly_negated(0x01)) === false
+        @test @inferred(can_be_truly_negated(0x00//0x01)) === true
+        @test @inferred(can_be_truly_negated(0x03//0x02)) === false
+        @test @inferred(can_be_truly_negated(0x00 + 0x00*im)) === true
+        @test @inferred(can_be_truly_negated(0x03 + 0x02*im)) === false
+
+        @test @inferred(negate(true)) === -1
+        @test @inferred(negate(false)) === 0
+        @test @inferred(negate(1)) === -1
+        @test @inferred(negate(-1.0)) === 1.0
+        @test @inferred(negate(-2 + im)) === 2 - im
+        @test @inferred(negate(π)) === -π
+        @test @inferred(negate(0x00)) === 0x00
+        @test @inferred(negate(0x00//0x01)) === 0x00//0x01
+        @test @inferred(negate(0x00 + 0x00*im)) === 0x00 + 0x00*im
+
+        @test_throws OverflowError negate(0x01)
+        @test_throws OverflowError negate(0x03//0x02)
+        @test_throws OverflowError negate(0x03 + 0x02*im)
     end
 
     @testset "Basic methods on neutral" begin
@@ -708,18 +736,22 @@ using Aqua
 
     @testset "Division with x::$(typeof(x)) = $x" for x in values
         @test same_value_and_type(@inferred(ZERO/x),   (x isa Neutral{0}) ? NaN : ZERO)
-        @test same_value_and_type(@inferred(x/ZERO),   (x isa Neutral{0}) ? NaN : infinity(x))
-        @test same_value_and_type(@inferred(ONE/x),    inv(x))
-        @test same_value_and_type(@inferred(x/ONE),    x)
-        @test same_value_and_type(@inferred((-ONE)/x), -inv(x))
-        @test same_value_and_type(@inferred(x/(-ONE)), -x)
-
-        @test same_value_and_type(@inferred(ZERO\x),   x/ZERO)
         @test same_value_and_type(@inferred(x\ZERO),   ZERO/x)
-        @test same_value_and_type(@inferred(ONE\x),    x/ONE)
+        @test same_value_and_type(@inferred(x/ZERO),   (x isa Neutral{0}) ? NaN : infinity(x))
+        @test same_value_and_type(@inferred(ZERO\x),   x/ZERO)
+        @test same_value_and_type(@inferred(ONE/x),    inv(x))
         @test same_value_and_type(@inferred(x\ONE),    ONE/x)
-        @test same_value_and_type(@inferred((-ONE)\x), x/(-ONE))
+        @test same_value_and_type(@inferred(x/ONE),    x)
+        @test same_value_and_type(@inferred(ONE\x),    x/ONE)
+        @test same_value_and_type(@inferred((-ONE)/x), -inv(x))
         @test same_value_and_type(@inferred(x\(-ONE)), (-ONE)/x)
+        if can_be_truly_negated(x)
+            @test same_value_and_type(@inferred(x/(-ONE)), -x)
+            @test same_value_and_type(@inferred((-ONE)\x), x/(-ONE))
+        else
+            @test_throws OverflowError x/(-ONE)
+            @test_throws OverflowError (-ONE)\x
+        end
     end
 
     @testset "Addition with x::$(typeof(x)) = $x" for x in values

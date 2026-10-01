@@ -191,6 +191,45 @@ infinity(x::T) where {T<:AbstractFloat} = copysign(convert(T, Inf)::T, x)
 infinity(x::T) where {T<:Complex} = complex(infinity(real(x)), infinity(imag(x)))
 # FIXME generalize to numbers and deal with units?
 
+"""
+    Neutrals.negate(x) -> -x
+
+Return `-x` if `x` cannot be truly negated.
+
+# See also
+
+[`Neutrals.can_be_truly_negated`](@ref).
+
+"""
+negate(x::T) where {T<:Union{Real,Complex}} = -x
+negate(x::Union{T,Rational{T},Complex{T}}) where {T<:Unsigned} =
+    iszero(x) ? x : throw_negate_unsigned(x)
+
+throw_negate_unsigned(x::Number) = throw_negate_unsigned(typeof(x))
+@noinline throw_negate_unsigned(::Type{T}) where {T<:Number} =
+    throw(OverflowError("cannot negate unsigned number of type `$T`"))
+
+"""
+    Neutrals.can_be_truly_negated(x) -> bool
+
+Return whether `x` can be truly negated by `-x`.
+
+Only non-zero unsigned numbers (unsigned integers and rationals or complexes with unsigned
+components) cannot be truly negated.
+
+!!! note
+    In Julia, a Boolean is converted to an `Int` when negated and the negation of an
+    irrational number yields a correct result (up to some numerical precision), so Boolean
+    and irrational numbers are considered as valid here.
+
+# See also
+
+[`Neutrals.negate`](@ref).
+
+"""
+can_be_truly_negated(x::Union{Real,Complex}) = true
+can_be_truly_negated(x::Union{T,Rational{T},Complex{T}}) where {T<:Unsigned} = iszero(x)
+
 #---------------------------------------------------------------------------------- Ranges -
 
 # Bypass `start:stop` methods defined in `base/range.jl` when `start` is a neutral number.
@@ -337,7 +376,7 @@ for T in (Integer, Rational, AbstractIrrational, Real, Complex)
                 return infinity(x)
             end
             isone(y) && return x
-            return -x
+            return negate(x)
         end
         function Base.:(/)(x::Neutral, y::$T)
             iszero(x) && return ZERO # propagate strong zero
