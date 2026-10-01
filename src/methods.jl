@@ -674,7 +674,7 @@ end
 Base.isless(x::AbstractFloat, y::Neutral) = isnan(x) ? false : x < y
 Base.isless(x::Neutral, y::AbstractFloat) = isnan(y) ? true : x < y
 
-for T in (Real, Integer, BigInt, BigFloat)
+for T in (Integer, BigInt, AbstractIrrational, BigFloat, Real)
     @eval begin
         # Generic comparison between a neutral number and a real.
         Base.cmp(x::Neutral, y::$T) = -Base.cmp(y, x) # `cmp` is anti-commutative
